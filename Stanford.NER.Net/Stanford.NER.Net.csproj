@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3571EA8D-1E5F-41E1-8997-B434D90D04EB}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Stanford.NER.Net</RootNamespace>
+    <AssemblyName>Stanford.NER.Net</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="IE\AbstractSequenceClassifier.cs" />
+    <Compile Include="IE\CRF\CRFClassifier.cs" />
+    <Compile Include="IE\CRF\CRFDatum.cs" />
+    <Compile Include="IE\CRF\CRFLabel.cs" />
+    <Compile Include="IE\CRF\ICliquePotentialFunction.cs" />
+    <Compile Include="IE\CRF\IHasCliquePotentialFunction.cs" />
+    <Compile Include="Ling\IHasWord.cs" />
+    <Compile Include="ObjectBank\ObjectBank.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Sequences\Clique.cs" />
+    <Compile Include="Sequences\FeatureFactory.cs" />
+    <Compile Include="Sequences\SeqClassifierFlags.cs" />
+    <Compile Include="Stats\ISampler.cs" />
+    <Compile Include="Support\AtomicInteger.cs" />
+    <Compile Include="Support\Collections.cs" />
+    <Compile Include="Support\ConcurrentHashMap.cs" />
+    <Compile Include="Support\HashMap.cs" />
+    <Compile Include="Support\IDictionaryExtensions.cs" />
+    <Compile Include="Support\ListExtensions.cs" />
+    <Compile Include="Support\StringExtensions.cs" />
+    <Compile Include="Util\HashIndex.cs" />
+    <Compile Include="Util\ICoreMap.cs" />
+    <Compile Include="Util\IFunction.cs" />
+    <Compile Include="Util\IIndex.cs" />
+    <Compile Include="Util\ITypesafeMap.cs" />
+    <Compile Include="Util\Logging\IPrettyLoggable.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
