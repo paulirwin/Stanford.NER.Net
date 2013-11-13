@@ -7,22 +7,17 @@ namespace Stanford.NER.Net.Util
 {
     public interface ITypesafeMap
     {
-        bool Has<T, VALUE>()
-            where T : TypesafeMap.Key<VALUE>;
+        bool Has(Type key);
 
-        VALUE Get<T, VALUE>()
-            where T : TypesafeMap.Key<VALUE>;
+        VALUE Get<VALUE>(Type key);
 
-        VALUE Set<T, VALUE>(VALUE value)
-            where T : TypesafeMap.Key<VALUE>;
+        VALUE Set<VALUE>(Type key, VALUE value);
 
-        VALUE Remove<T, VALUE>()
-            where T : TypesafeMap.Key<VALUE>;
+        VALUE Remove<VALUE>(Type key);
 
         ISet<Type> KeySet();
 
-        bool ContainsKey<T, VALUE>()
-            where T : TypesafeMap.Key<VALUE>;
+        bool ContainsKey(Type key);
 
         int Size();
     }

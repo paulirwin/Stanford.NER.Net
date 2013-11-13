@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Stanford.NER.Net.Util;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -31,7 +32,7 @@ namespace Stanford.NER.Net.Sequences
         public static readonly Clique cliqueCpCp2Cp3Cp4Cp5C = Clique.ValueOf(new int[] { -5, -4, -3, -2, -1, 0 });
         public static readonly Clique cliqueCnC = Clique.ValueOf(new int[] { 0, 1 });
         public static readonly Clique cliqueCpCnC = Clique.ValueOf(new int[] { -1, 0, 1 });
-        public static readonly List<Clique> knownCliques = Arrays.AsList(cliqueC, cliqueCpC, cliqueCp2C, cliqueCp3C, cliqueCp4C, cliqueCp5C, cliqueCpCp2C, cliqueCpCp2Cp3C, cliqueCpCp2Cp3Cp4C, cliqueCpCp2Cp3Cp4Cp5C, cliqueCnC, cliqueCpCnC);
+        public static readonly List<Clique> knownCliques = new List<Clique>() { cliqueC, cliqueCpC, cliqueCp2C, cliqueCp3C, cliqueCp4C, cliqueCp5C, cliqueCpCp2C, cliqueCpCp2Cp3C, cliqueCpCp2Cp3Cp4C, cliqueCpCp2Cp3Cp4Cp5C, cliqueCnC, cliqueCpCnC };
         
         public virtual List<Clique> GetCliques()
         {
@@ -64,12 +65,14 @@ namespace Stanford.NER.Net.Sequences
 
             foreach (string feat in addend)
             {
+                string featwritable = feat;
+
                 if (nonNullSuffix)
                 {
-                    feat = feat.Concat(suffix);
+                    featwritable = featwritable + suffix;
                 }
 
-                accumulator.Add(feat);
+                accumulator.Add(featwritable);
             }
         }
 

@@ -1,4 +1,6 @@
-﻿using Stanford.NER.Net.Sequences;
+﻿using Stanford.NER.Net.ObjectBank;
+using Stanford.NER.Net.Sequences;
+using Stanford.NER.Net.Support;
 using Stanford.NER.Net.Util;
 using System;
 using System.Collections.Generic;
@@ -43,10 +45,10 @@ namespace Stanford.NER.Net.IE.CRF
         {
         }
 
-        public CRFClassifier(Properties props)
-            : base(props)
-        {
-        }
+        //public CRFClassifier(Properties props)
+        //    : base(props)
+        //{
+        //}
 
         public CRFClassifier(SeqClassifierFlags flags)
             : base(flags)
@@ -59,7 +61,7 @@ namespace Stanford.NER.Net.IE.CRF
             this.windowSize = crf.windowSize;
             this.featureFactory = crf.featureFactory;
             this.pad = crf.pad;
-            this.knownLCWords = (crf.knownLCWords != null) ? Generics.NewHashSet(crf.knownLCWords) : null;
+            this.knownLCWords = (crf.knownLCWords != null) ? new HashSet<string>(crf.knownLCWords) : null;
             this.featureIndex = (crf.featureIndex != null) ? new HashIndex<String>(crf.featureIndex.ObjectsList()) : null;
             if (crf.flags.nonLinearCRF)
             {
@@ -149,7 +151,7 @@ namespace Stanford.NER.Net.IE.CRF
         {
             int numFeatures = featureIndex.Size();
             int oldNumFeatures = weights.Length;
-            IDictionary<CRFLabel, CRFLabel> crfLabelMap = Generics.NewHashMap();
+            IDictionary<CRFLabel, CRFLabel> crfLabelMap = new HashMap<CRFLabel, CRFLabel>();
             for (int i = 0; i < crf.labelIndices.Count; i++)
             {
                 for (int j = 0; j < crf.labelIndices[i].Size(); j++)
@@ -293,8 +295,8 @@ namespace Stanford.NER.Net.IE.CRF
         {
             bool droppedFeature = false;
             int docSize = document.Count;
-            int[][][] data = new int[docSize, windowSize];
-            double[][][] featureVals = new double[docSize, windowSize];
+            int[][][] data = new int[docSize][][];
+            double[][][] featureVals = new double[docSize][][];
             int[] labels = new int[docSize];
             if (flags.useReverse)
             {
@@ -306,6 +308,8 @@ namespace Stanford.NER.Net.IE.CRF
                 CRFDatum<List<String>, CRFLabel> d = MakeDatum(document, j, featureFactory);
                 List<List<String>> features = d.AsFeatures();
                 List<double[]> featureValList = d.AsFeatureVals();
+                data[j] = new int[windowSize][];
+                featureVals[j] = new double[windowSize][];
                 for (int k = 0, fSize = features.Count; k < fSize; k++)
                 {
                     ICollection<String> cliqueFeatures = features.Get(k);
@@ -394,7 +398,7 @@ namespace Stanford.NER.Net.IE.CRF
             return transData;
         }
 
-        public virtual void PrintLabelInformation(string testFile, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void PrintLabelInformation(string testFile, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromFile(testFile, readerAndWriter);
             foreach (List<IN> document in documents)
@@ -533,26 +537,27 @@ namespace Stanford.NER.Net.IE.CRF
                     enc = @"UTF-8";
                 }
 
-                PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(@"features-" + flags.printFeatures + @".txt"), enc), true);
-                foreach (string feat in featureIndex)
+                using (var fs = new FileStream("features-" + flags.printFeatures + ".txt", FileMode.OpenOrCreate, FileAccess.Write))
+                using (var pw = new StreamWriter(fs, Encoding.GetEncoding(enc)))
                 {
-                    pw.Println(feat);
+                    foreach (string feat in featureIndex)
+                    {
+                        pw.WriteLine(feat);
+                    }
                 }
-
-                pw.Close();
             }
             catch (IOException ioe)
             {
-                ioe.PrintStackTrace();
+                //ioe.PrintStackTrace();
             }
         }
 
         protected virtual void MakeAnswerArraysAndTagIndex(ICollection<List<IN>> ob)
         {
-            ISet<String>[] featureIndices = new HashSet[windowSize];
+            ISet<String>[] featureIndices = new HashSet<string>[windowSize];
             for (int i = 0; i < windowSize; i++)
             {
-                featureIndices[i] = Generics.NewHashSet();
+                featureIndices[i] = new HashSet<string>();
             }
 
             labelIndices = new List<IIndex<CRFLabel>>(windowSize);
@@ -564,9 +569,9 @@ namespace Stanford.NER.Net.IE.CRF
             IIndex<CRFLabel> labelIndex = labelIndices.Get(windowSize - 1);
             classIndex = new HashIndex<String>();
             classIndex.Add(flags.backgroundSymbol);
-            Set<String>[] seenBackgroundFeatures = new HashSet[2];
-            seenBackgroundFeatures[0] = Generics.NewHashSet();
-            seenBackgroundFeatures[1] = Generics.NewHashSet();
+            ISet<String>[] seenBackgroundFeatures = new HashSet<string>[2];
+            seenBackgroundFeatures[0] = new HashSet<string>();
+            seenBackgroundFeatures[1] = new HashSet<string>();
             int wordCount = 0;
             foreach (List<IN> doc in ob)
             {
@@ -578,30 +583,30 @@ namespace Stanford.NER.Net.IE.CRF
                 foreach (IN token in doc)
                 {
                     wordCount++;
-                    string ans = token.Get(typeof(CoreAnnotations.AnswerAnnotation));
+                    string ans = token.Get<string>(typeof(CoreAnnotations.AnswerAnnotation));
                     if (ans == null || ans.Equals(@""))
                     {
-                        throw new ArgumentException(@"Word " + wordCount + " (\"" + token.Get(typeof(CoreAnnotations.TextAnnotation)) + "\") has a blank answer");
+                        throw new ArgumentException(@"Word " + wordCount + " (\"" + token.Get<string>(typeof(CoreAnnotations.TextAnnotation)) + "\") has a blank answer");
                     }
 
                     classIndex.Add(ans);
                 }
 
-                for (int j = 0, docSize = doc.size(); j < docSize; j++)
+                for (int j = 0, docSize = doc.Size(); j < docSize; j++)
                 {
                     CRFDatum<List<String>, CRFLabel> d = MakeDatum(doc, j, featureFactory);
                     labelIndex.Add(d.Label());
                     List<List<String>> features = d.AsFeatures();
-                    for (int k = 0, fSize = features.size(); k < fSize; k++)
+                    for (int k = 0, fSize = features.Size(); k < fSize; k++)
                     {
-                        Collection<String> cliqueFeatures = features.Get(k);
+                        ICollection<String> cliqueFeatures = features.Get(k);
                         if (k < 2 && flags.removeBackgroundSingletonFeatures)
                         {
-                            string ans = doc.Get(j).Get(typeof(CoreAnnotations.AnswerAnnotation));
+                            string ans = doc.Get(j).Get<string>(typeof(CoreAnnotations.AnswerAnnotation));
                             bool background = ans.Equals(flags.backgroundSymbol);
                             if (k == 1 && j > 0 && background)
                             {
-                                ans = doc.Get(j - 1).Get(typeof(CoreAnnotations.AnswerAnnotation));
+                                ans = doc.Get(j - 1).Get<string>(typeof(CoreAnnotations.AnswerAnnotation));
                                 background = ans.Equals(flags.backgroundSymbol);
                             }
 
@@ -653,7 +658,7 @@ namespace Stanford.NER.Net.IE.CRF
             if (flags.groupByFeatureTemplate)
             {
                 templateGroupIndex = new HashIndex<String>();
-                featureIndexToTemplateIndex = new HashIDictionary<int, int>();
+                featureIndexToTemplateIndex = new HashMap<int, int>();
             }
 
             Matcher m = null;
@@ -702,7 +707,7 @@ namespace Stanford.NER.Net.IE.CRF
 
             if (flags.useObservedSequencesOnly)
             {
-                for (int i = 0, liSize = labelIndex.size(); i < liSize; i++)
+                for (int i = 0, liSize = labelIndex.Size(); i < liSize; i++)
                 {
                     CRFLabel label = labelIndex.Get(i);
                     for (int j = windowSize - 2; j >= 0; j--)
@@ -722,7 +727,7 @@ namespace Stanford.NER.Net.IE.CRF
 
             if (VERBOSE)
             {
-                for (int i = 0, fiSize = featureIndex.size(); i < fiSize; i++)
+                for (int i = 0, fiSize = featureIndex.Size(); i < fiSize; i++)
                 {
                     Console.Out.WriteLine(i + @": " + featureIndex.Get(i));
                 }
@@ -734,22 +739,26 @@ namespace Stanford.NER.Net.IE.CRF
             int[] label = new int[window];
             int numClasses = classIndex.Size();
             IIndex<CRFLabel> labelIndex = new HashIndex<CRFLabel>();
-        OUTER:
+        
             while (true)
             {
                 CRFLabel l = new CRFLabel(label);
                 labelIndex.Add(l);
                 int[] label1 = new int[window];
-                Array.Copy(label, 0, label1, 0, label.length);
+                Array.Copy(label, 0, label1, 0, label.Length);
                 label = label1;
-                for (int j = 0; j < label.length; j++)
+
+                bool shouldBreakWhile = false;
+
+                for (int j = 0; j < label.Length; j++)
                 {
                     label[j]++;
                     if (label[j] >= numClasses)
                     {
                         label[j] = 0;
-                        if (j == label.length - 1)
+                        if (j == label.Length - 1)
                         {
+                            shouldBreakWhile = true;
                             break;
                         }
                     }
@@ -758,21 +767,24 @@ namespace Stanford.NER.Net.IE.CRF
                         break;
                     }
                 }
+
+                if (shouldBreakWhile)
+                    break;
             }
 
             return labelIndex;
         }
 
-        public virtual CRFDatum<List<String>, CRFLabel> MakeDatum(List<IN> info, int loc, edu.stanford.nlp.sequences.FeatureFactory<IN> featureFactory)
+        public virtual CRFDatum<List<String>, CRFLabel> MakeDatum(List<IN> info, int loc, FeatureFactory<IN> featureFactory)
         {
             PaddedList<IN> pInfo = new PaddedList<IN>(info, pad);
             List<List<String>> features = new List<List<String>>();
             List<double[]> featureVals = new List<double[]>();
-            Collection<Clique> done = Generics.NewHashSet();
+            ISet<Clique> done = new HashSet<Clique>();
             for (int i = 0; i < windowSize; i++)
             {
                 List<String> featuresC = new List<String>();
-                List<Clique> windowCliques = FeatureFactory.GetCliques(i, 0);
+                List<Clique> windowCliques = FeatureFactory<IN>.GetCliques(i, 0);
                 windowCliques.RemoveAll(done);
                 done.AddAll(windowCliques);
                 double[] featureValArr = null;
@@ -786,8 +798,8 @@ namespace Stanford.NER.Net.IE.CRF
                         double[] embedding = null;
                         if (currLoc >= 0 && currLoc < info.Size())
                         {
-                            currentWord = info.Get(loc).Get(typeof(CoreAnnotations.TextAnnotation));
-                            string word = currentWord.ToLowerCase();
+                            currentWord = info.Get(loc).Get<string>(typeof(CoreAnnotations.TextAnnotation));
+                            string word = currentWord.ToLower();
                             word = word.ReplaceAll(@"(-)?\\d+(\\.\\d*)?", @"0");
                             if (embeddings.ContainsKey(word))
                                 embedding = embeddings.Get(word);
@@ -799,7 +811,7 @@ namespace Stanford.NER.Net.IE.CRF
                             embedding = embeddings.Get(@"PADDING");
                         }
 
-                        for (int e = 0; e < embedding.length; e++)
+                        for (int e = 0; e < embedding.Length; e++)
                         {
                             featuresC.Add(@"EMBEDDING-(" + (currLoc - loc) + @")-" + e);
                         }
@@ -807,30 +819,30 @@ namespace Stanford.NER.Net.IE.CRF
                         if (flags.addCapitalFeatures)
                         {
                             int numOfCapitalFeatures = 4;
-                            double[] newEmbedding = new double[embedding.length + numOfCapitalFeatures];
-                            int currLen = embedding.length;
+                            double[] newEmbedding = new double[embedding.Length + numOfCapitalFeatures];
+                            int currLen = embedding.Length;
                             Array.Copy(embedding, 0, newEmbedding, 0, currLen);
                             for (int e = 0; e < numOfCapitalFeatures; e++)
                                 featuresC.Add(@"CAPITAL-(" + (currLoc - loc) + @")-" + e);
                             if (currLoc >= 0 && currLoc < info.Size())
                             {
-                                if (currentWord.ToUpperCase().Equals(currentWord))
+                                if (currentWord.ToUpper().Equals(currentWord))
                                     newEmbedding[currLen] = 1;
                                 else
                                 {
                                     currLen += 1;
-                                    if (currentWord.ToLowerCase().Equals(currentWord))
+                                    if (currentWord.ToLower().Equals(currentWord))
                                         newEmbedding[currLen] = 1;
                                     else
                                     {
                                         currLen += 1;
-                                        if (Character.IsUpperCase(currentWord.CharAt(0)))
+                                        if (char.IsUpper(currentWord[0]))
                                             newEmbedding[currLen] = 1;
                                         else
                                         {
                                             currLen += 1;
                                             string remainder = currentWord.Substring(1);
-                                            if (!remainder.ToLowerCase().Equals(remainder))
+                                            if (!remainder.ToLower().Equals(remainder))
                                                 newEmbedding[currLen] = 1;
                                         }
                                     }
@@ -841,15 +853,15 @@ namespace Stanford.NER.Net.IE.CRF
                         }
 
                         embeddingList.Add(embedding);
-                        concatEmbeddingLen += embedding.length;
+                        concatEmbeddingLen += embedding.Length;
                     }
 
                     double[] concatEmbedding = new double[concatEmbeddingLen];
                     int currPos = 0;
                     foreach (double[] em in embeddingList)
                     {
-                        Array.Copy(em, 0, concatEmbedding, currPos, em.length);
-                        currPos += em.length;
+                        Array.Copy(em, 0, concatEmbedding, currPos, em.Length);
+                        currPos += em.Length;
                     }
 
                     if (flags.prependEmbedding)
@@ -857,14 +869,14 @@ namespace Stanford.NER.Net.IE.CRF
                         int additionalFeatureCount = 0;
                         foreach (Clique c in windowCliques)
                         {
-                            Collection<String> fCol = featureFactory.GetCliqueFeatures(pInfo, loc, c);
-                            featuresC.AddAll(fCol);
+                            ICollection<String> fCol = featureFactory.GetCliqueFeatures(pInfo, loc, c);
+                            featuresC.AddRange(fCol);
                             additionalFeatureCount += fCol.Size();
                         }
 
-                        featureValArr = new double[concatEmbedding.length + additionalFeatureCount];
-                        Array.Copy(concatEmbedding, 0, featureValArr, 0, concatEmbedding.length);
-                        Arrays.Fill(featureValArr, concatEmbedding.length, featureValArr.length, 1.0);
+                        featureValArr = new double[concatEmbedding.Length + additionalFeatureCount];
+                        Array.Copy(concatEmbedding, 0, featureValArr, 0, concatEmbedding.Length);
+                        Arrays.Fill(featureValArr, concatEmbedding.Length, featureValArr.Length, 1.0);
                     }
                     else
                     {
@@ -874,9 +886,9 @@ namespace Stanford.NER.Net.IE.CRF
                     if (flags.addBiasToEmbedding)
                     {
                         featuresC.Add(@"BIAS-FEATURE");
-                        double[] newFeatureValArr = new double[featureValArr.length + 1];
-                        Array.Copy(featureValArr, 0, newFeatureValArr, 0, featureValArr.length);
-                        newFeatureValArr[newFeatureValArr.length - 1] = 1;
+                        double[] newFeatureValArr = new double[featureValArr.Length + 1];
+                        Array.Copy(featureValArr, 0, newFeatureValArr, 0, featureValArr.Length);
+                        newFeatureValArr[newFeatureValArr.Length - 1] = 1;
                         featureValArr = newFeatureValArr;
                     }
                 }
@@ -884,7 +896,7 @@ namespace Stanford.NER.Net.IE.CRF
                 {
                     foreach (Clique c in windowCliques)
                     {
-                        featuresC.AddAll(featureFactory.GetCliqueFeatures(pInfo, loc, c));
+                        featuresC.AddRange(featureFactory.GetCliqueFeatures(pInfo, loc, c));
                     }
                 }
 
@@ -895,7 +907,7 @@ namespace Stanford.NER.Net.IE.CRF
             int[] labels = new int[windowSize];
             for (int i = 0; i < windowSize; i++)
             {
-                string answer = pInfo.Get(loc + i - windowSize + 1).Get(typeof(CoreAnnotations.AnswerAnnotation));
+                string answer = pInfo.Get(loc + i - windowSize + 1).Get<string>(typeof(CoreAnnotations.AnswerAnnotation));
                 labels[i] = classIndex.IndexOf(answer);
             }
 
@@ -917,34 +929,30 @@ namespace Stanford.NER.Net.IE.CRF
                 this.window = cliqueTree.Window();
                 this.numClasses = cliqueTree.GetNumClasses();
                 tags = new int[numClasses];
-                for (int i = 0; i < tags.length; i++)
+                for (int i = 0; i < tags.Length; i++)
                 {
                     tags[i] = i;
                 }
 
-                backgroundTag = new int
-            {
-            cliqueTree.BackgroundIndex()}
-
-                ;
+                backgroundTag = new int[] { cliqueTree.BackgroundIndex() };
             }
 
-            public override int Length()
+            public int Length()
             {
                 return cliqueTree.Length();
             }
 
-            public override int LeftWindow()
+            public int LeftWindow()
             {
                 return window - 1;
             }
 
-            public override int RightWindow()
+            public int RightWindow()
             {
                 return 0;
             }
 
-            public override int[] GetPossibleValues(int pos)
+            public int[] GetPossibleValues(int pos)
             {
                 if (pos < window - 1)
                 {
@@ -954,7 +962,7 @@ namespace Stanford.NER.Net.IE.CRF
                 return tags;
             }
 
-            public override double ScoreOf(int[] tags, int pos)
+            public double ScoreOf(int[] tags, int pos)
             {
                 int[] previous = new int[window - 1];
                 int realPos = pos - window + 1;
@@ -966,7 +974,7 @@ namespace Stanford.NER.Net.IE.CRF
                 return cliqueTree.CondLogProbGivenPrevious(realPos, tags[pos], previous);
             }
 
-            public override double[] ScoresOf(int[] tags, int pos)
+            public double[] ScoresOf(int[] tags, int pos)
             {
                 int realPos = pos - window + 1;
                 double[] scores = new double[numClasses];
@@ -984,7 +992,7 @@ namespace Stanford.NER.Net.IE.CRF
                 return scores;
             }
 
-            public override double ScoreOf(int[] sequence)
+            public double ScoreOf(int[] sequence)
             {
                 throw new NotSupportedException();
             }
@@ -1001,7 +1009,7 @@ namespace Stanford.NER.Net.IE.CRF
                 catch (Exception e)
                 {
                     Console.Error.WriteLine(@"Error running testGibbs inference!");
-                    e.PrintStackTrace();
+                    //e.PrintStackTrace();
                     return null;
                 }
             }

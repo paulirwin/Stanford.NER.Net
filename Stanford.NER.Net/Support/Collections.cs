@@ -13,6 +13,11 @@ namespace Stanford.NER.Net.Support
             return new SetFromMap<TKey, TValue>(map);
         }
 
+        public static void Reverse<T>(this List<T> coll)
+        {
+            coll.Reverse();
+        }
+
         private class SetFromMap<TKey, TValue> : ISet<TKey>
         {
             private readonly IDictionary<TKey, TValue> _dict;

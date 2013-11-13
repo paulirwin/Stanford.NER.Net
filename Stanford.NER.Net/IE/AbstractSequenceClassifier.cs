@@ -1,5 +1,6 @@
 ﻿using Stanford.NER.Net.Ling;
 using Stanford.NER.Net.ObjectBank;
+using Stanford.NER.Net.Process;
 using Stanford.NER.Net.Sequences;
 using Stanford.NER.Net.Stats;
 using Stanford.NER.Net.Support;
@@ -20,40 +21,40 @@ namespace Stanford.NER.Net.IE
         public IIndex<String> classIndex;
         public FeatureFactory<IN> featureFactory;
         protected IN pad;
-        private CoreTokenFactory<IN> tokenFactory;
+        private ICoreTokenFactory<IN> tokenFactory;
         protected int windowSize;
         protected ISet<String> knownLCWords = Collections.NewSetFromMap(new ConcurrentHashMap<String, Boolean>());
-        private DocumentReaderAndWriter<IN> defaultReaderAndWriter;
+        private IDocumentReaderAndWriter<IN> defaultReaderAndWriter;
 
-        public virtual DocumentReaderAndWriter<IN> DefaultReaderAndWriter()
+        public virtual IDocumentReaderAndWriter<IN> DefaultReaderAndWriter()
         {
             return defaultReaderAndWriter;
         }
 
         private readonly AtomicInteger threadCompletionCounter = new AtomicInteger(0);
-        private DocumentReaderAndWriter<IN> plainTextReaderAndWriter;
+        private IDocumentReaderAndWriter<IN> plainTextReaderAndWriter;
 
-        public virtual DocumentReaderAndWriter<IN> PlainTextReaderAndWriter()
+        public virtual IDocumentReaderAndWriter<IN> PlainTextReaderAndWriter()
         {
             return plainTextReaderAndWriter;
         }
 
-        public AbstractSequenceClassifier(Properties props)
-            : this(new SeqClassifierFlags(props))
-        {
-        }
+        //public AbstractSequenceClassifier(Properties props)
+        //    : this(new SeqClassifierFlags(props))
+        //{
+        //}
 
         public AbstractSequenceClassifier(SeqClassifierFlags flags)
         {
             this.flags = flags;
-            this.featureFactory = new MetaClass(flags.featureFactory).CreateInstance(flags.featureFactoryArgs);
+            this.featureFactory = new MetaClass(flags.featureFactory).CreateInstance<FeatureFactory<IN>>(flags.featureFactoryArgs);
             if (flags.tokenFactory == null)
             {
-                tokenFactory = (CoreTokenFactory<IN>)new CoreLabelTokenFactory();
+                tokenFactory = (ICoreTokenFactory<IN>)new CoreLabelTokenFactory();
             }
             else
             {
-                this.tokenFactory = new MetaClass(flags.tokenFactory).CreateInstance(flags.tokenFactoryArgs);
+                this.tokenFactory = new MetaClass(flags.tokenFactory).CreateInstance<ICoreTokenFactory<IN>>(flags.tokenFactoryArgs);
             }
 
             pad = tokenFactory.MakeToken();
@@ -77,9 +78,9 @@ namespace Stanford.NER.Net.IE
             }
         }
 
-        public virtual DocumentReaderAndWriter<IN> MakeReaderAndWriter()
+        public virtual IDocumentReaderAndWriter<IN> MakeReaderAndWriter()
         {
-            DocumentReaderAndWriter<IN> readerAndWriter;
+            IDocumentReaderAndWriter<IN> readerAndWriter;
             try
             {
                 readerAndWriter = ReflectionLoading.LoadByReflection(flags.readerAndWriter);
@@ -93,7 +94,7 @@ namespace Stanford.NER.Net.IE
             return readerAndWriter;
         }
 
-        public virtual DocumentReaderAndWriter<IN> MakePlainTextReaderAndWriter()
+        public virtual IDocumentReaderAndWriter<IN> MakePlainTextReaderAndWriter()
         {
             string readerClassName = flags.plainTextDocumentReaderAndWriter;
             if (readerClassName == null)
@@ -101,7 +102,7 @@ namespace Stanford.NER.Net.IE
                 readerClassName = SeqClassifierFlags.DEFAULT_PLAIN_TEXT_READER;
             }
 
-            DocumentReaderAndWriter<IN> readerAndWriter;
+            IDocumentReaderAndWriter<IN> readerAndWriter;
             try
             {
                 readerAndWriter = ReflectionLoading.LoadByReflection(readerClassName);
@@ -122,7 +123,7 @@ namespace Stanford.NER.Net.IE
 
         public virtual ISet<String> Labels()
         {
-            return Generics.NewHashSet(classIndex.ObjectsList());
+            return new HashSet<string>(classIndex.ObjectsList());
         }
 
         public virtual List<IN> ClassifySentence(IEnumerable<IHasWord> sentence)
@@ -142,7 +143,7 @@ namespace Stanford.NER.Net.IE
                     wi.Set(typeof(CoreAnnotations.TextAnnotation), word.Word());
                 }
 
-                wi.Set(typeof(CoreAnnotations.PositionAnnotation), Integer.ToString(i));
+                wi.Set(typeof(CoreAnnotations.PositionAnnotation), i.ToString());
                 wi.Set(typeof(CoreAnnotations.AnswerAnnotation), BackgroundSymbol());
                 document.Add(wi);
                 i++;
@@ -171,7 +172,7 @@ namespace Stanford.NER.Net.IE
                     wi.Set(typeof(CoreAnnotations.TextAnnotation), word.Word());
                 }
 
-                wi.Set(typeof(CoreAnnotations.PositionAnnotation), Integer.ToString(i));
+                wi.Set(typeof(CoreAnnotations.PositionAnnotation), i.ToString());
                 wi.Set(typeof(CoreAnnotations.AnswerAnnotation), BackgroundSymbol());
                 document.Add(wi);
                 i++;
@@ -183,25 +184,29 @@ namespace Stanford.NER.Net.IE
             return document;
         }
 
-        public virtual SequenceModel GetSequenceModel(List<IN> doc)
+        public virtual ISequenceModel GetSequenceModel(List<IN> doc)
         {
             throw new NotSupportedException();
         }
 
         public virtual ISampler<List<IN>> GetSampler(List<IN> input)
         {
-            return new AnonymousSampler(this);
+            return new AnonymousSampler(this, input);
         }
 
         private sealed class AnonymousSampler : ISampler<List<IN>>
         {
-            public AnonymousSampler(AbstractSequenceClassifier<IN> parent)
+            public AnonymousSampler(AbstractSequenceClassifier<IN> parent, List<IN> input)
             {
                 this.parent = parent;
+                this.input = input;
+                model = parent.GetSequenceModel(input);
             }
 
             private readonly AbstractSequenceClassifier<IN> parent;
-            SequenceModel model = GetSequenceModel(input);
+            private readonly List<IN> input;
+
+            ISequenceModel model;
             SequenceSampler sampler = new SequenceSampler();
             public override List<IN> DrawSample()
             {
@@ -210,8 +215,8 @@ namespace Stanford.NER.Net.IE
                 int i = 0;
                 foreach (IN word in input)
                 {
-                    IN newWord = tokenFactory.MakeToken(word);
-                    newWord.Set(typeof(CoreAnnotations.AnswerAnnotation), classIndex.Get(sampleArray[i++]));
+                    IN newWord = parent.tokenFactory.MakeToken(word);
+                    newWord.Set(typeof(CoreAnnotations.AnswerAnnotation), parent.classIndex.Get(sampleArray[i++]));
                     sample.Add(newWord);
                 }
 
@@ -228,7 +233,7 @@ namespace Stanford.NER.Net.IE
 
             ObjectBankWrapper<IN> obw = new ObjectBankWrapper<IN>(flags, null, knownLCWords);
             doc = obw.ProcessDocument(doc);
-            SequenceModel model = GetSequenceModel(doc);
+            ISequenceModel model = GetSequenceModel(doc);
             KBestSequenceFinder tagInference = new KBestSequenceFinder();
             Counter<int[]> bestSequences = tagInference.KBestSequences(model, k);
             Counter<List<IN>> kBest = new ClassicCounter<List<IN>>();
@@ -261,7 +266,7 @@ namespace Stanford.NER.Net.IE
 
             ObjectBankWrapper<IN> obw = new ObjectBankWrapper<IN>(flags, null, knownLCWords);
             doc = obw.ProcessDocument(doc);
-            SequenceModel model = GetSequenceModel(doc);
+            ISequenceModel model = GetSequenceModel(doc);
             return ViterbiSearchGraphBuilder.GetGraph(model, classIndex);
         }
 
@@ -284,7 +289,7 @@ namespace Stanford.NER.Net.IE
             return result;
         }
 
-        public virtual List<List<IN>> ClassifyRaw(string str, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual List<List<IN>> ClassifyRaw(string str, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromString(str, readerAndWriter);
             List<List<IN>> result = new List<List<IN>>();
@@ -458,19 +463,19 @@ namespace Stanford.NER.Net.IE
             Train(filename, defaultReaderAndWriter);
         }
 
-        public virtual void Train(string filename, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void Train(string filename, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             flags.ocrTrain = true;
             Train(MakeObjectBankFromFile(filename, readerAndWriter), readerAndWriter);
         }
 
-        public virtual void Train(string baseTrainDir, string trainFiles, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void Train(string baseTrainDir, string trainFiles, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             flags.ocrTrain = true;
             Train(MakeObjectBankFromFiles(baseTrainDir, trainFiles, readerAndWriter), readerAndWriter);
         }
 
-        public virtual void Train(String[] trainFileList, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void Train(String[] trainFileList, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             flags.ocrTrain = true;
             Train(MakeObjectBankFromFiles(trainFileList, readerAndWriter), readerAndWriter);
@@ -481,9 +486,9 @@ namespace Stanford.NER.Net.IE
             Train(docs, defaultReaderAndWriter);
         }
 
-        public abstract void Train(ICollection<List<IN>> docs, DocumentReaderAndWriter<IN> readerAndWriter);
+        public abstract void Train(ICollection<List<IN>> docs, IDocumentReaderAndWriter<IN> readerAndWriter);
 
-        public virtual ObjectBank<List<IN>> MakeObjectBankFromString(string string_renamed, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual ObjectBank<List<IN>> MakeObjectBankFromString(string string_renamed, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             if (flags.announceObjectBankEntries)
             {
@@ -501,32 +506,32 @@ namespace Stanford.NER.Net.IE
             return new ObjectBankWrapper<IN>(flags, new ObjectBank<List<IN>>(new ResettableReaderIteratorFactory(string_renamed), readerAndWriter), knownLCWords);
         }
 
-        public virtual ObjectBank<List<IN>> MakeObjectBankFromFile(string filename, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual ObjectBank<List<IN>> MakeObjectBankFromFile(string filename, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             String[] fileAsArray = new[] { filename };
 
             return MakeObjectBankFromFiles(fileAsArray, readerAndWriter);
         }
 
-        public virtual ObjectBank<List<IN>> MakeObjectBankFromFiles(String[] trainFileList, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual ObjectBank<List<IN>> MakeObjectBankFromFiles(String[] trainFileList, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
-            Collection<File> files = new List<File>();
+            ICollection<FileInfo> files = new List<FileInfo>();
             foreach (string trainFile in trainFileList)
             {
-                File f = new File(trainFile);
+                FileInfo f = new FileInfo(trainFile);
                 files.Add(f);
             }
 
             return new ObjectBankWrapper<IN>(flags, new ObjectBank<List<IN>>(new ResettableReaderIteratorFactory(files, flags.inputEncoding), readerAndWriter), knownLCWords);
         }
 
-        public virtual ObjectBank<List<IN>> MakeObjectBankFromFiles(string baseDir, string filePattern, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual ObjectBank<List<IN>> MakeObjectBankFromFiles(string baseDir, string filePattern, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
-            File path = new File(baseDir);
+            FileInfo path = new FileInfo(baseDir);
             FileFilter filter = new RegExFileFilter(Pattern.Compile(filePattern));
-            File[] origFiles = path.ListFiles(filter);
-            Collection<File> files = new List<File>();
-            foreach (File file in origFiles)
+            FileInfo[] origFiles = path.ListFiles(filter);
+            ICollection<FileInfo> files = new List<FileInfo>();
+            foreach (FileInfo file in origFiles)
             {
                 if (file.IsFile())
                 {
@@ -547,7 +552,7 @@ namespace Stanford.NER.Net.IE
             return new ObjectBankWrapper<IN>(flags, new ObjectBank<List<IN>>(new ResettableReaderIteratorFactory(files, flags.inputEncoding), readerAndWriter), knownLCWords);
         }
 
-        public virtual ObjectBank<List<IN>> MakeObjectBankFromFiles(Collection<File> files, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual ObjectBank<List<IN>> MakeObjectBankFromFiles(ICollection<FileInfo> files, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             if (files.IsEmpty())
             {
@@ -557,7 +562,7 @@ namespace Stanford.NER.Net.IE
             return new ObjectBankWrapper<IN>(flags, new ObjectBank<List<IN>>(new ResettableReaderIteratorFactory(files, flags.inputEncoding), readerAndWriter), knownLCWords);
         }
 
-        public virtual ObjectBank<List<IN>> MakeObjectBankFromReader(BufferedReader in_renamed, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual ObjectBank<List<IN>> MakeObjectBankFromReader(BufferedReader in_renamed, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             if (flags.announceObjectBankEntries)
             {
@@ -567,7 +572,7 @@ namespace Stanford.NER.Net.IE
             return new ObjectBankWrapper<IN>(flags, new ObjectBank<List<IN>>(new ResettableReaderIteratorFactory(in_renamed), readerAndWriter), knownLCWords);
         }
 
-        public virtual void PrintProbs(string filename, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void PrintProbs(string filename, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             flags.ocrTrain = false;
             ObjectBank<List<IN>> docs = MakeObjectBankFromFile(filename, readerAndWriter);
@@ -588,12 +593,12 @@ namespace Stanford.NER.Net.IE
             ClassifyStdin(plainTextReaderAndWriter);
         }
 
-        public virtual void ClassifyStdin(DocumentReaderAndWriter<IN> readerWriter)
+        public virtual void ClassifyStdin(IDocumentReaderAndWriter<IN> readerWriter)
         {
             BufferedReader istream = new BufferedReader(new InputStreamReader(Console.In, flags.inputEncoding));
             for (string line; (line = istream.ReadLine()) != null; )
             {
-                Collection<List<IN>> documents = MakeObjectBankFromString(line, readerWriter);
+                ICollection<List<IN>> documents = MakeObjectBankFromString(line, readerWriter);
                 if (flags.keepEmptySentences && documents.Size() == 0)
                 {
                     documents = Collections.SingletonList(Collections.EmptyList());
@@ -609,42 +614,42 @@ namespace Stanford.NER.Net.IE
             ClassifyAndWriteAnswers(testFile, plainTextReaderAndWriter);
         }
 
-        public virtual void ClassifyAndWriteAnswers(string testFile, DocumentReaderAndWriter<IN> readerWriter)
+        public virtual void ClassifyAndWriteAnswers(string testFile, IDocumentReaderAndWriter<IN> readerWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromFile(testFile, readerWriter);
             ClassifyAndWriteAnswers(documents, readerWriter);
         }
 
-        public virtual void ClassifyAndWriteAnswers(string testFile, OutputStream outStream, DocumentReaderAndWriter<IN> readerWriter)
+        public virtual void ClassifyAndWriteAnswers(string testFile, OutputStream outStream, IDocumentReaderAndWriter<IN> readerWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromFile(testFile, readerWriter);
             PrintWriter pw = IOUtils.EncodedOutputStreamPrintWriter(outStream, flags.outputEncoding, true);
             ClassifyAndWriteAnswers(documents, pw, readerWriter);
         }
 
-        public virtual void ClassifyAndWriteAnswers(string baseDir, string filePattern, DocumentReaderAndWriter<IN> readerWriter)
+        public virtual void ClassifyAndWriteAnswers(string baseDir, string filePattern, IDocumentReaderAndWriter<IN> readerWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromFiles(baseDir, filePattern, readerWriter);
             ClassifyAndWriteAnswers(documents, readerWriter);
         }
 
-        public virtual void ClassifyFilesAndWriteAnswers(Collection<File> testFiles)
+        public virtual void ClassifyFilesAndWriteAnswers(ICollection<FileInfo> testFiles)
         {
             ClassifyFilesAndWriteAnswers(testFiles, plainTextReaderAndWriter);
         }
 
-        public virtual void ClassifyFilesAndWriteAnswers(Collection<File> testFiles, DocumentReaderAndWriter<IN> readerWriter)
+        public virtual void ClassifyFilesAndWriteAnswers(ICollection<FileInfo> testFiles, IDocumentReaderAndWriter<IN> readerWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromFiles(testFiles, readerWriter);
             ClassifyAndWriteAnswers(documents, readerWriter);
         }
 
-        private void ClassifyAndWriteAnswers(Collection<List<IN>> documents, DocumentReaderAndWriter<IN> readerWriter)
+        private void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, IDocumentReaderAndWriter<IN> readerWriter)
         {
             ClassifyAndWriteAnswers(documents, IOUtils.EncodedOutputStreamPrintWriter(Console.Out, flags.outputEncoding, true), readerWriter);
         }
 
-        public virtual void ClassifyAndWriteAnswers(Collection<List<IN>> documents, PrintWriter printWriter, DocumentReaderAndWriter<IN> readerWriter)
+        public virtual void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, PrintWriter printWriter, IDocumentReaderAndWriter<IN> readerWriter)
         {
             Timing timer = new Timing();
             Counter<String> entityTP = new ClassicCounter<String>();
