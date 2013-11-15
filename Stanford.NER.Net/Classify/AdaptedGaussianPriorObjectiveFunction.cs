@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Stanford.NER.Net.Math;
+using Stanford.NER.Net.Support;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -31,11 +33,11 @@ namespace Stanford.NER.Net.Classify
             value = 0.0;
             if (derivativeNumerator == null)
             {
-                derivativeNumerator = new double[x.length];
+                derivativeNumerator = new double[x.Length];
                 for (int d = 0; d < data.length; d++)
                 {
                     int[] features = data[d];
-                    for (int f = 0; f < features.length; f++)
+                    for (int f = 0; f < features.Length; f++)
                     {
                         int i = IndexOf(features[f], labels[d]);
                         if (dataweights == null)
@@ -59,7 +61,7 @@ namespace Stanford.NER.Net.Classify
                 Arrays.Fill(sums, 0.0);
                 for (int c = 0; c < numClasses; c++)
                 {
-                    for (int f = 0; f < features.length; f++)
+                    for (int f = 0; f < features.Length; f++)
                     {
                         int i = IndexOf(features[f], c);
                         sums[c] += x[i];
@@ -69,13 +71,13 @@ namespace Stanford.NER.Net.Classify
                 double total = ArrayMath.LogSum(sums);
                 for (int c = 0; c < numClasses; c++)
                 {
-                    probs[c] = Math.Exp(sums[c] - total);
+                    probs[c] = System.Math.Exp(sums[c] - total);
                     if (dataweights != null)
                     {
                         probs[c] *= dataweights[d];
                     }
 
-                    for (int f = 0; f < features.length; f++)
+                    for (int f = 0; f < features.Length; f++)
                     {
                         int i = IndexOf(features[f], c);
                         derivative[i] += probs[c];

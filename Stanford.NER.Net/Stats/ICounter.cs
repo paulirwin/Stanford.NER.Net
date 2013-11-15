@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Stanford.NER.Net.Stats
 {
-    public interface ICounter<E>
+    public interface ICounter<E> : ICounter
     {
         IFactory<ICounter<E>> GetFactory();
         void SetDefaultReturnValue(double rv);
@@ -28,5 +28,10 @@ namespace Stanford.NER.Net.Stats
         void Clear();
         int Size();
         double TotalCount();
+    }
+
+    public interface ICounter
+    {
+        // non-generic marker interface
     }
 }

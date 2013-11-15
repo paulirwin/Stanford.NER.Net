@@ -1,6 +1,7 @@
 ﻿using Stanford.NER.Net.Ling;
 using Stanford.NER.Net.ObjectBank;
 using Stanford.NER.Net.Sequences;
+using Stanford.NER.Net.Stats;
 using Stanford.NER.Net.Support;
 using Stanford.NER.Net.Util;
 using System;
@@ -1053,9 +1054,9 @@ namespace Stanford.NER.Net.IE.CRF
         virtual void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, IList<Tuple<int[][][], int[], double[][][]>> documentDataAndLabels, TextWriter printWriter, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             Timing timer = new Timing();
-            Counter<String> entityTP = new ClassicCounter<String>();
-            Counter<String> entityFP = new ClassicCounter<String>();
-            Counter<String> entityFN = new ClassicCounter<String>();
+            ICounter<String> entityTP = new ClassicCounter<String>();
+            ICounter<String> entityFP = new ClassicCounter<String>();
+            ICounter<String> entityFN = new ClassicCounter<String>();
             bool resultsCounted = true;
             int numWords = 0;
             int numDocs = 0;
@@ -2529,12 +2530,12 @@ namespace Stanford.NER.Net.IE.CRF
             return result;
         }
 
-        protected virtual void AddProcessedData(List<List<CRFDatum<Collection<String>, String>>> processedData, int[][][][] data, int[][] labels, double[][][][] featureVals, int offset)
+        protected virtual void AddProcessedData(List<List<CRFDatum<ICollection<String>, String>>> processedData, int[][][][] data, int[][] labels, double[][][][] featureVals, int offset)
         {
             for (int i = 0, pdSize = processedData.size(); i < pdSize; i++)
             {
                 int dataIndex = i + offset;
-                List<CRFDatum<Collection<String>, String>> document = processedData.Get(i);
+                List<CRFDatum<ICollection<String>, String>> document = processedData.Get(i);
                 int dsize = document.Size();
                 labels[dataIndex] = new int[dsize];
                 data[dataIndex] = new int[dsize];
@@ -3603,14 +3604,14 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        public virtual IDictionary<String, Counter<String>> TopWeights()
+        public virtual IDictionary<String, ICounter<String>> TopWeights()
         {
-            IDictionary<String, Counter<String>> w = new HashIDictionary<String, Counter<String>>();
+            IDictionary<String, ICounter<String>> w = new HashIDictionary<String, ICounter<String>>();
             foreach (string feature in featureIndex)
             {
                 int index = featureIndex.IndexOf(feature);
                 double[] v = weights[index];
-                Index<CRFLabel> l = this.labelIndices.Get(0);
+                IIndex<CRFLabel> l = this.labelIndices.Get(0);
                 foreach (CRFLabel label in l)
                 {
                     if (!w.ContainsKey(label.ToString(classIndex)))

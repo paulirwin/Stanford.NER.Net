@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Stanford.NER.Net.Ling;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -51,12 +52,12 @@ namespace Stanford.NER.Net.IE.CRF
 
         public override bool Equals(Object o)
         {
-            if (!(o is Datum))
+            if (!(o is IDatum))
             {
                 return (false);
             }
 
-            Datum d = (Datum)o;
+            IDatum<LAB,FEAT> d = (IDatum<LAB,FEAT>)o;
             return features.Equals(d.AsFeatures());
         }
 

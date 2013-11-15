@@ -1,16 +1,19 @@
-﻿using System;
+﻿using Stanford.NER.Net.Support;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Stanford.NER.Net.Util
 {
-    public class HashIndex<E> : IIndex<E>, IRandomAccess
+    public class HashIndex<E> : IIndex<E> //, IRandomAccess
+        where E : class
     {
         List<E> objects = new List<E>();
-        IDictionary<E, int?> indexes = Generics.NewHashMap();
+        IDictionary<E, int?> indexes = new HashMap<E, int?>();
         bool locked;
         public override void Clear()
         {
@@ -32,25 +35,28 @@ namespace Stanford.NER.Net.Util
 
         public virtual ICollection<E> Objects(int[] indices)
         {
-            return new AnonymousAbstractList(this);
+            return new AnonymousAbstractList(this, indices);
         }
 
-        private sealed class AnonymousAbstractList : AbstractList
+        private sealed class AnonymousAbstractList : AbstractList<E>
         {
-            public AnonymousAbstractList(HashIndex parent)
+            public AnonymousAbstractList(HashIndex<E> parent, int[] indices)
             {
                 this.parent = parent;
+                this.indices = indices;
             }
 
-            private readonly HashIndex parent;
+            private readonly HashIndex<E> parent;
+            private readonly int[] indices;
+
             public override E Get(int index)
             {
-                return objects.Get(indices[index]);
+                return parent.objects.Get(indices[index]);
             }
 
             public override int Size()
             {
-                return indices.length;
+                return indices.Length;
             }
         }
 
@@ -62,7 +68,7 @@ namespace Stanford.NER.Net.Util
         public virtual E Get(int i)
         {
             if (i < 0 || i >= objects.Size())
-                throw new ArrayIndexOutOfBoundsException(@"Index " + i + @" outside the bounds [0," + Size() + @")");
+                throw new IndexOutOfRangeException(@"Index " + i + @" outside the bounds [0," + Size() + @")");
             return objects.Get(i);
         }
 
@@ -93,14 +99,14 @@ namespace Stanford.NER.Net.Util
 
         public virtual int IndexOf(E o, bool add)
         {
-            int index = indexes.Get(o);
+            int? index = indexes.Get(o);
             if (index == null)
             {
                 if (add && !locked)
                 {
                     try
                     {
-                        semaphore.Acquire();
+                        semaphore.WaitOne();
                         index = indexes.Get(o);
                         if (index == null)
                         {
@@ -111,9 +117,9 @@ namespace Stanford.NER.Net.Util
 
                         semaphore.Release();
                     }
-                    catch (InterruptedException e)
+                    catch (ThreadInterruptedException e)
                     {
-                        throw new Exception(e);
+                        throw;
                     }
                 }
                 else
@@ -122,10 +128,11 @@ namespace Stanford.NER.Net.Util
                 }
             }
 
-            return index;
+            return index.GetValueOrDefault(-1);
         }
 
-        private readonly Semaphore semaphore = new Semaphore(1);
+        private readonly Semaphore semaphore = new Semaphore(0, 1);
+
         public override bool AddAll(ICollection<E> c)
         {
             bool changed = false;
@@ -139,7 +146,7 @@ namespace Stanford.NER.Net.Util
 
         public override bool Add(E o)
         {
-            int index = indexes.Get(o);
+            int? index = indexes.Get(o);
             if (index == null && !locked)
             {
                 index = objects.Size();
@@ -153,7 +160,7 @@ namespace Stanford.NER.Net.Util
 
         public override bool Contains(Object o)
         {
-            return indexes.ContainsKey(o);
+            return indexes.ContainsKey((E)o);
         }
 
         public HashIndex()
@@ -164,8 +171,8 @@ namespace Stanford.NER.Net.Util
         public HashIndex(int capacity)
             : base()
         {
-            objects = new ArrayList<E>(capacity);
-            indexes = Generics.NewHashMap(capacity);
+            objects = new List<E>(capacity);
+            indexes = new HashMap<E, int?>();
         }
 
         public HashIndex(ICollection<E> c)
@@ -351,14 +358,14 @@ namespace Stanford.NER.Net.Util
             return newIndex;
         }
 
-        private sealed class AnonymousHashIndex : HashIndex
+        private sealed class AnonymousHashIndex : HashIndex<E>
         {
-            public AnonymousHashIndex(HashIndex parent)
+            public AnonymousHashIndex(HashIndex<E> parent)
             {
                 this.parent = parent;
             }
 
-            private readonly HashIndex parent;
+            private readonly HashIndex<E> parent;
             public override void Unlock()
             {
                 throw new NotSupportedException(@"This is an unmodifiable view!");

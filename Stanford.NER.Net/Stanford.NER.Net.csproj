@@ -43,6 +43,7 @@
     <Compile Include="Classify\AdaptedGaussianPriorObjectiveFunction.cs" />
     <Compile Include="Classify\BiasedLogConditionalObjectiveFunction.cs" />
     <Compile Include="Classify\CrossValidator.cs" />
+    <Compile Include="Classify\Dataset.cs" />
     <Compile Include="Classify\GeneralDataset.cs" />
     <Compile Include="Classify\IClassifier.cs" />
     <Compile Include="Classify\IClassifierCreator.cs" />
@@ -102,8 +103,10 @@
     <Compile Include="Sequences\ISequenceModel.cs" />
     <Compile Include="Sequences\SeqClassifierFlags.cs" />
     <Compile Include="Sequences\SequenceSampler.cs" />
+    <Compile Include="Stats\ClassicCounter.cs" />
     <Compile Include="Stats\ICounter.cs" />
     <Compile Include="Stats\ISampler.cs" />
+    <Compile Include="Support\AbstractList.cs" />
     <Compile Include="Support\Arrays.cs" />
     <Compile Include="Support\AtomicInteger.cs" />
     <Compile Include="Support\Character.cs" />
@@ -125,8 +128,12 @@
     <Compile Include="Util\IScored.cs" />
     <Compile Include="Util\ITypesafeMap.cs" />
     <Compile Include="Util\Logging\IPrettyLoggable.cs" />
+    <Compile Include="Util\MapFactory.cs" />
     <Compile Include="Util\MetaClass.cs" />
+    <Compile Include="Util\MutableDouble.cs" />
     <Compile Include="Util\PaddedList.cs" />
+    <Compile Include="Util\ScoredComparator.cs" />
+    <Compile Include="Util\ScoredObject.cs" />
     <Compile Include="Util\StringUtils.cs" />
     <Compile Include="Util\Timing.cs" />
   </ItemGroup>

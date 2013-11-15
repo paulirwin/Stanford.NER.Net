@@ -508,14 +508,14 @@ public void Reset()
         return result;
     }
 
-    private static ThreadLocal<IdentityHashSet<CoreMap>> hashCodeCalled = new ThreadLocal<IdentityHashSet<CoreMap>>();
+    private static ThreadLocal<IdentityHashSet<ICoreMap>> hashCodeCalled = new ThreadLocal<IdentityHashSet<ICoreMap>>();
     public override int GetHashCode()
     {
-        IdentityHashSet<CoreMap> calledSet = hashCodeCalled.Get();
+        IdentityHashSet<ICoreMap> calledSet = hashCodeCalled.Get();
         bool createdCalledSet = (calledSet == null);
         if (createdCalledSet)
         {
-            calledSet = new IdentityHashSet<CoreMap>();
+            calledSet = new IdentityHashSet<ICoreMap>();
             hashCodeCalled.Set(calledSet);
         }
 

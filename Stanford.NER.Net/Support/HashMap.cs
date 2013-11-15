@@ -8,8 +8,8 @@ namespace Stanford.NER.Net.Support
 {
     public class HashMap<TKey, TValue> : IDictionary<TKey, TValue>
         where TKey : class
-        where TValue: class
     {
+        private readonly IEqualityComparer<TValue> _valueEqComp = EqualityComparer<TValue>.Default;
         private readonly IDictionary<TKey, TValue> _dict;
         private TValue _nullKeyValue;
         private bool _hasNullKey;
@@ -38,7 +38,7 @@ namespace Stanford.NER.Net.Support
         public bool ContainsKey(TKey key)
         {
             if (key == null)
-                return _nullKeyValue != null;
+                return _hasNullKey;
 
             return _dict.ContainsKey(key);
         }
@@ -56,7 +56,7 @@ namespace Stanford.NER.Net.Support
                     return false;
 
                 _hasNullKey = false;
-                _nullKeyValue = null;
+                _nullKeyValue = default(TValue);
                 return true;
             }
 
@@ -69,7 +69,7 @@ namespace Stanford.NER.Net.Support
             {
                 if (!_hasNullKey)
                 {
-                    value = null;
+                    value = default(TValue);
                     return false;
                 }
 
@@ -99,7 +99,7 @@ namespace Stanford.NER.Net.Support
                 {
                     if (_hasNullKey)
                         return _nullKeyValue;
-                    return null;
+                    return default(TValue);
                 }
 
                 TValue value;
@@ -107,7 +107,7 @@ namespace Stanford.NER.Net.Support
                 if (_dict.TryGetValue(key, out value))
                     return value;
 
-                return null;
+                return default(TValue);
             }
             set
             {
@@ -123,14 +123,14 @@ namespace Stanford.NER.Net.Support
         public void Clear()
         {
             _hasNullKey = false;
-            _nullKeyValue = null;
+            _nullKeyValue = default(TValue);
             _dict.Clear();
         }
 
         public bool Contains(KeyValuePair<TKey, TValue> item)
         {
             if (item.Key == null)
-                return _nullKeyValue == item.Value;
+                return _valueEqComp.Equals(_nullKeyValue, item.Value);
 
             return _dict.Contains(item);
         }

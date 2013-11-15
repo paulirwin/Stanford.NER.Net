@@ -227,7 +227,7 @@ namespace Stanford.NER.Net.IE
             }
         }
 
-        public virtual Counter<List<IN>> ClassifyKBest(List<IN> doc, Type answerField, int k)
+        public virtual ICounter<List<IN>> ClassifyKBest(List<IN> doc, Type answerField, int k)
         {
             if (doc.Count == 0)
             {
@@ -238,8 +238,8 @@ namespace Stanford.NER.Net.IE
             doc = obw.ProcessDocument(doc);
             ISequenceModel model = GetSequenceModel(doc);
             KBestSequenceFinder tagInference = new KBestSequenceFinder();
-            Counter<int[]> bestSequences = tagInference.KBestSequences(model, k);
-            Counter<List<IN>> kBest = new ClassicCounter<List<IN>>();
+            ICounter<int[]> bestSequences = tagInference.KBestSequences(model, k);
+            ICounter<List<IN>> kBest = new ClassicCounter<List<IN>>();
             foreach (int[] seq in bestSequences.KeySet())
             {
                 List<IN> kth = new List<IN>();
@@ -657,9 +657,9 @@ namespace Stanford.NER.Net.IE
         public virtual void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, TextWriter printWriter, IDocumentReaderAndWriter<IN> readerWriter)
         {
             Timing timer = new Timing();
-            Counter<String> entityTP = new ClassicCounter<String>();
-            Counter<String> entityFP = new ClassicCounter<String>();
-            Counter<String> entityFN = new ClassicCounter<String>();
+            ICounter<String> entityTP = new ClassicCounter<String>();
+            ICounter<String> entityFP = new ClassicCounter<String>();
+            ICounter<String> entityFN = new ClassicCounter<String>();
             bool resultsCounted = true;
             int numWords = 0;
             int numDocs = 0;
@@ -739,7 +739,7 @@ namespace Stanford.NER.Net.IE
         public virtual void ClassifyAndWriteAnswersKBest(string testFile, int k, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromFile(testFile, readerAndWriter);
-            PrintWriter pw = IOUtils.EncodedOutputStreamPrintWriter(Console.Out, flags.outputEncoding, true);
+            TextWriter pw = IOUtils.EncodedOutputStreamPrintWriter(Console.Out, flags.outputEncoding, true);
             ClassifyAndWriteAnswersKBest(documents, k, pw, readerAndWriter);
         }
 
@@ -750,7 +750,7 @@ namespace Stanford.NER.Net.IE
             int numSentences = 0;
             foreach (List<IN> doc in documents)
             {
-                Counter<List<IN>> kBest = ClassifyKBest(doc, typeof(CoreAnnotations.AnswerAnnotation), k);
+                ICounter<List<IN>> kBest = ClassifyKBest(doc, typeof(CoreAnnotations.AnswerAnnotation), k);
                 numWords += doc.Size();
                 List<List<IN>> sorted = Counters.ToSortedList(kBest);
                 int n = 1;
@@ -811,7 +811,7 @@ namespace Stanford.NER.Net.IE
             }
         }
 
-        public virtual bool CountResults(IList<IN> doc, Counter<String> entityTP, Counter<String> entityFP, Counter<String> entityFN)
+        public virtual bool CountResults(IList<IN> doc, ICounter<String> entityTP, ICounter<String> entityFP, ICounter<String> entityFN)
         {
             string bg = (flags.evaluateBackground ? null : flags.backgroundSymbol);
             if (flags.entitySubclassification.EqualsIgnoreCase(@"iob2"))
@@ -830,7 +830,7 @@ namespace Stanford.NER.Net.IE
             }
         }
 
-        public static bool CountResultsIOB2(List<ICoreMap> doc, Counter<String> entityTP, Counter<String> entityFP, Counter<String> entityFN, string background)
+        public static bool CountResultsIOB2(IList<ICoreMap> doc, ICounter<String> entityTP, ICounter<String> entityFP, ICounter<String> entityFN, string background)
         {
             bool entityCorrect = true;
             string previousGold = background;
@@ -964,7 +964,7 @@ namespace Stanford.NER.Net.IE
             return true;
         }
 
-        public static int TallyOneEntityIOB(List<ICoreMap> doc, int index, Type source, Type target, Counter<String> positive, Counter<String> negative, string background)
+        public static int TallyOneEntityIOB(IList<ICoreMap> doc, int index, Type source, Type target, ICounter<String> positive, ICounter<String> negative, string background)
         {
             CoreMap line = doc.Get(index);
             string gold = line.Get(source);
@@ -1015,12 +1015,12 @@ namespace Stanford.NER.Net.IE
             return index;
         }
 
-        public static bool CountResults(List<ICoreMap> doc, Counter<String> entityTP, Counter<String> entityFP, Counter<String> entityFN, string background)
+        public static bool CountResults(IList<ICoreMap> doc, ICounter<String> entityTP, ICounter<String> entityFP, ICounter<String> entityFN, string background)
         {
             int index = 0;
             int goldIndex = 0, guessIndex = 0;
             string lastGold = background, lastGuess = background;
-            foreach (CoreMap line in doc)
+            foreach (ICoreMap line in doc)
             {
                 string gold = line.Get(typeof(CoreAnnotations.GoldAnswerAnnotation));
                 string guess = line.Get(typeof(CoreAnnotations.AnswerAnnotation));
@@ -1090,9 +1090,9 @@ namespace Stanford.NER.Net.IE
             return true;
         }
 
-        public static void PrintResults(Counter<String> entityTP, Counter<String> entityFP, Counter<String> entityFN)
+        public static void PrintResults(ICounter<String> entityTP, ICounter<String> entityFP, ICounter<String> entityFN)
         {
-            Set<String> entities = new TreeSet<String>();
+            ISet<String> entities = new SortedSet<String>();
             entities.AddAll(entityTP.KeySet());
             entities.AddAll(entityFP.KeySet());
             entities.AddAll(entityFN.KeySet());

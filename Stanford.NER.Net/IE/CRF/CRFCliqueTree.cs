@@ -1,5 +1,6 @@
 ﻿using Stanford.NER.Net.Math;
 using Stanford.NER.Net.Sequences;
+using Stanford.NER.Net.Stats;
 using Stanford.NER.Net.Support;
 using Stanford.NER.Net.Util;
 using System;
@@ -196,9 +197,9 @@ namespace Stanford.NER.Net.IE.CRF
             return System.Math.Exp(LogProb(position, label));
         }
 
-        public virtual Counter<E> Probs(int position)
+        public virtual ICounter<E> Probs(int position)
         {
-            Counter<E> c = new ClassicCounter<E>();
+            ICounter<E> c = new ClassicCounter<E>();
             for (int i = 0, sz = classIndex.Size(); i < sz; i++)
             {
                 E label = classIndex.Get(i);
@@ -208,9 +209,9 @@ namespace Stanford.NER.Net.IE.CRF
             return c;
         }
 
-        public virtual Counter<E> LogProbs(int position)
+        public virtual ICounter<E> LogProbs(int position)
         {
-            Counter<E> c = new ClassicCounter<E>();
+            ICounter<E> c = new ClassicCounter<E>();
             for (int i = 0, sz = classIndex.Size(); i < sz; i++)
             {
                 E label = classIndex.Get(i);
@@ -350,7 +351,7 @@ namespace Stanford.NER.Net.IE.CRF
 
         private List<E> IntArrayToListE(int[] is_renamed)
         {
-            List<E> os = new ArrayList<E>(is_renamed.length);
+            List<E> os = new List<E>(is_renamed.Length);
             foreach (int i in is_renamed)
             {
                 os.Add(classIndex.Get(i));
@@ -398,9 +399,9 @@ namespace Stanford.NER.Net.IE.CRF
             return System.Math.Exp(CondLogProbGivenPrevious(position, label, prevLabels));
         }
 
-        public virtual Counter<E> CondLogProbsGivenPrevious(int position, int[] prevlabels)
+        public virtual ICounter<E> CondLogProbsGivenPrevious(int position, int[] prevlabels)
         {
-            Counter<E> c = new ClassicCounter<E>();
+            ICounter<E> c = new ClassicCounter<E>();
             for (int i = 0, sz = classIndex.Size(); i < sz; i++)
             {
                 E label = classIndex.Get(i);
@@ -410,9 +411,9 @@ namespace Stanford.NER.Net.IE.CRF
             return c;
         }
 
-        public virtual Counter<E> CondLogProbsGivenPrevious(int position, E[] prevlabels)
+        public virtual ICounter<E> CondLogProbsGivenPrevious(int position, E[] prevlabels)
         {
-            Counter<E> c = new ClassicCounter<E>();
+            ICounter<E> c = new ClassicCounter<E>();
             for (int i = 0, sz = classIndex.Size(); i < sz; i++)
             {
                 E label = classIndex.Get(i);
@@ -462,9 +463,9 @@ namespace Stanford.NER.Net.IE.CRF
             return System.Math.Exp(CondLogProbGivenNext(position, label, nextLabels));
         }
 
-        public virtual Counter<E> CondLogProbsGivenNext(int position, int[] nextlabels)
+        public virtual ICounter<E> CondLogProbsGivenNext(int position, int[] nextlabels)
         {
-            Counter<E> c = new ClassicCounter<E>();
+            ICounter<E> c = new ClassicCounter<E>();
             for (int i = 0, sz = classIndex.Size(); i < sz; i++)
             {
                 E label = classIndex.Get(i);
@@ -474,9 +475,9 @@ namespace Stanford.NER.Net.IE.CRF
             return c;
         }
 
-        public virtual Counter<E> CondLogProbsGivenNext(int position, E[] nextlabels)
+        public virtual ICounter<E> CondLogProbsGivenNext(int position, E[] nextlabels)
         {
-            Counter<E> c = new ClassicCounter<E>();
+            ICounter<E> c = new ClassicCounter<E>();
             for (int i = 0, sz = classIndex.Size(); i < sz; i++)
             {
                 E label = classIndex.Get(i);
@@ -488,7 +489,7 @@ namespace Stanford.NER.Net.IE.CRF
 
         public static CRFCliqueTree<E> GetCalibratedCliqueTree(int[][][] data, List<IIndex<CRFLabel>> labelIndices, 
             int numClasses, IIndex<E> classIndex, E backgroundSymbol, 
-            CliquePotentialFunction cliquePotentialFunc, double[][][] featureVals)
+            ICliquePotentialFunction cliquePotentialFunc, double[][][] featureVals)
         {
             FactorTable[] factorTables = new FactorTable[data.Length];
             FactorTable[] messages = new FactorTable[data.Length - 1];
@@ -576,12 +577,12 @@ namespace Stanford.NER.Net.IE.CRF
         static FactorTable GetFactorTable(double[][] weights, int[][] data, List<IIndex<CRFLabel>> labelIndices, 
             int numClasses)
         {
-            CliquePotentialFunction cliquePotentialFunc = new LinearCliquePotentialFunction(weights);
+            ICliquePotentialFunction cliquePotentialFunc = new LinearCliquePotentialFunction(weights);
             return GetFactorTable(data, labelIndices, numClasses, cliquePotentialFunc, null);
         }
 
         private static FactorTable GetFactorTable(int[][] data, List<IIndex<CRFLabel>> labelIndices, int numClasses, 
-            CliquePotentialFunction cliquePotentialFunc, double[][] featureValByCliqueSize)
+            ICliquePotentialFunction cliquePotentialFunc, double[][] featureValByCliqueSize)
         {
             FactorTable factorTable = null;
             for (int j = 0, sz = labelIndices.Size(); j < sz; j++)
@@ -591,7 +592,7 @@ namespace Stanford.NER.Net.IE.CRF
                 double[] featureVal = null;
                 if (featureValByCliqueSize != null)
                     featureVal = featureValByCliqueSize[j];
-                for (int k = 0, liSize = labelIndex.size(); k < liSize; k++)
+                for (int k = 0, liSize = labelIndex.Size(); k < liSize; k++)
                 {
                     int[] label = ((CRFLabel)labelIndex.Get(k)).GetLabel();
                     double cliquePotential = cliquePotentialFunc.ComputeCliquePotential(j + 1, k, data[j], featureVal);
