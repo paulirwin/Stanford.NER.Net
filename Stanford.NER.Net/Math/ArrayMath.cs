@@ -1,6 +1,7 @@
 ﻿using Stanford.NER.Net.Support;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -1375,7 +1376,7 @@ namespace Stanford.NER.Net.Math
         {
             double[] b = new double[a.Length];
             Array.Copy(a, 0, b, 0, b.Length);
-            Arrays.Sort(b);
+            Array.Sort(b);
             int mid = b.Length / 2;
             if (b.Length % 2 == 0)
             {
@@ -1916,10 +1917,10 @@ namespace Stanford.NER.Net.Math
 
         public static string ToString(double[][] counts)
         {
-            return ToString(counts, 10, null, null, NumberFormat.GetInstance(), false);
+            return ToString(counts, 10, null, null, CultureInfo.CurrentCulture.NumberFormat, false);
         }
 
-        public static string ToString(double[][] counts, int cellSize, Object[] rowLabels, Object[] colLabels, NumberFormat nf, bool printTotals)
+        public static string ToString(double[][] counts, int cellSize, Object[] rowLabels, Object[] colLabels, NumberFormatInfo nf, bool printTotals)
         {
             if (counts == null)
                 return null;
@@ -1943,7 +1944,7 @@ namespace Stanford.NER.Net.Math
                 for (int j = 0; j < counts[0].Length; j++)
                 {
                     string s = colLabels[j].ToString();
-                    if (s.Length() > cellSize - 1)
+                    if (s.Length > cellSize - 1)
                     {
                         s = s.Substring(0, cellSize - 1);
                     }
@@ -1971,12 +1972,12 @@ namespace Stanford.NER.Net.Math
 
                 for (int j = 0; j < counts[i].Length; j++)
                 {
-                    result.Append(StringUtils.PadLeft(nf.Format(counts[i][j]), cellSize));
+                    result.Append(StringUtils.PadLeft((counts[i][j]).ToString(nf), cellSize));
                 }
 
                 if (printTotals)
                 {
-                    result.Append(StringUtils.PadLeft(nf.Format(rowTotals[i]), cellSize));
+                    result.Append(StringUtils.PadLeft((rowTotals[i]).ToString(nf), cellSize));
                 }
 
                 result.Append('\n');
@@ -1998,10 +1999,10 @@ namespace Stanford.NER.Net.Math
 
         public static string ToString(float[][] counts)
         {
-            return ToString(counts, 10, null, null, NumberFormat.GetIntegerInstance(), false);
+            return ToString(counts, 10, null, null, CultureInfo.CurrentCulture.NumberFormat, false);
         }
 
-        public static string ToString(float[][] counts, int cellSize, Object[] rowLabels, Object[] colLabels, NumberFormat nf, bool printTotals)
+        public static string ToString(float[][] counts, int cellSize, Object[] rowLabels, Object[] colLabels, NumberFormatInfo nf, bool printTotals)
         {
             double[] rowTotals = new double[counts.Length];
             double[] colTotals = new double[counts[0].Length];
@@ -2046,12 +2047,12 @@ namespace Stanford.NER.Net.Math
 
                 for (int j = 0; j < counts[i].Length; j++)
                 {
-                    result.Append(StringUtils.PadLeft(nf.Format(counts[i][j]), cellSize));
+                    result.Append(StringUtils.PadLeft((counts[i][j]).ToString(nf), cellSize));
                 }
 
                 if (printTotals)
                 {
-                    result.Append(StringUtils.PadLeft(nf.Format(rowTotals[i]), cellSize));
+                    result.Append(StringUtils.PadLeft((rowTotals[i]).ToString(nf), cellSize));
                 }
 
                 result.Append('\n');
@@ -2062,10 +2063,10 @@ namespace Stanford.NER.Net.Math
                 result.Append(StringUtils.Pad(@"Total", cellSize));
                 foreach (double colTotal in colTotals)
                 {
-                    result.Append(StringUtils.PadLeft(nf.Format(colTotal), cellSize));
+                    result.Append(StringUtils.PadLeft((colTotal).ToString(nf), cellSize));
                 }
 
-                result.Append(StringUtils.PadLeft(nf.Format(total), cellSize));
+                result.Append(StringUtils.PadLeft((total).ToString(nf), cellSize));
             }
 
             return result.ToString();
@@ -2095,7 +2096,7 @@ namespace Stanford.NER.Net.Math
 
         public static int[][] DeepCopy(int[][] counts)
         {
-            int[][] result = new int[counts.Length];
+            int[][] result = new int[counts.Length][];
             for (int i = 0; i < counts.Length; i++)
             {
                 result[i] = new int[counts[i].Length];
@@ -2113,11 +2114,12 @@ namespace Stanford.NER.Net.Math
                 means[i] = Mean(data[i]);
             }
 
-            double[][] covariance = new double[means.Length, means.Length];
+            double[][] covariance = new double[means.Length][];
             for (int i = 0; i < data[0].Length; i++)
             {
                 for (int j = 0; j < means.Length; j++)
                 {
+                    covariance[j] = new double[means.Length];
                     for (int k = 0; k < means.Length; k++)
                     {
                         covariance[j][k] += (means[j] - data[j][i]) * (means[k] - data[k][i]);
@@ -2129,7 +2131,7 @@ namespace Stanford.NER.Net.Math
             {
                 for (int j = 0; j < covariance[i].Length; j++)
                 {
-                    covariance[i][j] = Math.Sqrt(covariance[i][j]) / (data[0].Length);
+                    covariance[i][j] = System.Math.Sqrt(covariance[i][j]) / (data[0].Length);
                 }
             }
 
@@ -2167,7 +2169,7 @@ namespace Stanford.NER.Net.Math
                 {
                     throw new InvalidElementException(@"NaN found in " + vectorName + @" element " + i);
                 }
-                else if (Double.IsInfinite(vector[i]))
+                else if (Double.IsInfinity(vector[i]))
                 {
                     throw new InvalidElementException(@"Infinity found in " + vectorName + @" element " + i);
                 }

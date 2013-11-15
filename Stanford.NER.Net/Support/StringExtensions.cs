@@ -12,5 +12,10 @@ namespace Stanford.NER.Net
         {
             return string.Equals(value, other, StringComparison.OrdinalIgnoreCase);
         }
+
+        public static bool IsEmpty(this string value)
+        {
+            return string.IsNullOrEmpty(value);
+        }
     }
 }

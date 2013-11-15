@@ -253,15 +253,15 @@ namespace Stanford.NER.Net.Util
             return index;
         }
 
-        public virtual void SaveToWriter(Writer bw)
+        public virtual void SaveToWriter(TextWriter bw)
         {
-            for (int i = 0, sz = size(); i < sz; i++)
+            for (int i = 0, sz = Size(); i < sz; i++)
             {
                 bw.Write(i + @"=" + Get(i) + '\n');
             }
         }
 
-        public static IIndex<String> LoadFromReader(BufferedReader br)
+        public static IIndex<String> LoadFromReader(TextReader br)
         {
             HashIndex<String> index = new HashIndex<String>();
             string line = br.ReadLine();

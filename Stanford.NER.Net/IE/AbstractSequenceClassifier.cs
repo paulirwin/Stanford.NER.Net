@@ -1,4 +1,5 @@
-﻿using Stanford.NER.Net.Ling;
+﻿using Stanford.NER.Net.FSM;
+using Stanford.NER.Net.Ling;
 using Stanford.NER.Net.ObjectBank;
 using Stanford.NER.Net.Process;
 using Stanford.NER.Net.Sequences;
@@ -7,9 +8,11 @@ using Stanford.NER.Net.Support;
 using Stanford.NER.Net.Util;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Stanford.NER.Net.IE
@@ -257,11 +260,11 @@ namespace Stanford.NER.Net.IE
             return kBest;
         }
 
-        public virtual DFSA<String, Integer> GetViterbiSearchGraph(List<IN> doc, Type answerField)
+        public virtual DFSA<String, int> GetViterbiSearchGraph(List<IN> doc, Type answerField)
         {
             if (doc.Count == 0)
             {
-                return new DFSA<String, Integer>(null);
+                return new DFSA<String, int>(null);
             }
 
             ObjectBankWrapper<IN> obw = new ObjectBankWrapper<IN>(flags, null, knownLCWords);
@@ -347,7 +350,7 @@ namespace Stanford.NER.Net.IE
                 else
                 {
                     StringWriter sw = new StringWriter();
-                    PrintWriter pw = new PrintWriter(sw);
+                    TextWriter pw = sw;
                     plainTextReaderAndWriter.PrintAnswers(docOutput, pw);
                     pw.Flush();
                     sb.Append(sw.ToString());
@@ -417,30 +420,32 @@ namespace Stanford.NER.Net.IE
             return entities;
         }
 
-        public virtual List<String> SegmentString(string sentence)
+        public virtual IList<String> SegmentString(string sentence)
         {
             return SegmentString(sentence, defaultReaderAndWriter);
         }
 
-        public virtual List<String> SegmentString(string sentence, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual IList<String> SegmentString(string sentence, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
-            ObjectBank<List<IN>> docs = MakeObjectBankFromString(sentence, readerAndWriter);
+            ObjectBank<IList<IN>> docs = MakeObjectBankFromString(sentence, readerAndWriter);
             StringWriter stringWriter = new StringWriter();
-            PrintWriter stringPrintWriter = new PrintWriter(stringWriter);
-            foreach (List<IN> doc in docs)
+            TextWriter stringPrintWriter = stringWriter;
+            foreach (IList<IN> doc in docs)
             {
                 Classify(doc);
                 readerAndWriter.PrintAnswers(doc, stringPrintWriter);
-                stringPrintWriter.Println();
+                stringPrintWriter.WriteLine();
             }
 
             stringPrintWriter.Close();
             string segmented = stringWriter.ToString();
-            return Arrays.AsList(segmented.Split(@"\\s"));
+            Regex r = new Regex("\\s");
+            return r.Split(segmented);
         }
 
-        public abstract List<IN> Classify(List<IN> document);
-        public abstract List<IN> ClassifyWithGlobalInformation(List<IN> tokenSequence, ICoreMap document, ICoreMap sentence);
+        public abstract IList<IN> Classify(IList<IN> document);
+        public abstract IList<IN> ClassifyWithGlobalInformation(IList<IN> tokenSequence, ICoreMap document, ICoreMap sentence);
+
         public virtual void Train()
         {
             if (flags.trainFiles != null)
@@ -620,10 +625,10 @@ namespace Stanford.NER.Net.IE
             ClassifyAndWriteAnswers(documents, readerWriter);
         }
 
-        public virtual void ClassifyAndWriteAnswers(string testFile, OutputStream outStream, IDocumentReaderAndWriter<IN> readerWriter)
+        public virtual void ClassifyAndWriteAnswers(string testFile, Stream outStream, IDocumentReaderAndWriter<IN> readerWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromFile(testFile, readerWriter);
-            PrintWriter pw = IOUtils.EncodedOutputStreamPrintWriter(outStream, flags.outputEncoding, true);
+            TextWriter pw = IOUtils.EncodedOutputStreamPrintWriter(outStream, flags.outputEncoding, true);
             ClassifyAndWriteAnswers(documents, pw, readerWriter);
         }
 
@@ -649,7 +654,7 @@ namespace Stanford.NER.Net.IE
             ClassifyAndWriteAnswers(documents, IOUtils.EncodedOutputStreamPrintWriter(Console.Out, flags.outputEncoding, true), readerWriter);
         }
 
-        public virtual void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, PrintWriter printWriter, IDocumentReaderAndWriter<IN> readerWriter)
+        public virtual void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, TextWriter printWriter, IDocumentReaderAndWriter<IN> readerWriter)
         {
             Timing timer = new Timing();
             Counter<String> entityTP = new ClassicCounter<String>();
@@ -700,7 +705,7 @@ namespace Stanford.NER.Net.IE
 
             long millis = timer.Stop();
             double wordspersec = numWords / (((double)millis) / 1000);
-            NumberFormat nf = new DecimalFormat(@"0.00");
+            NumberFormatInfo nf = new NumberFormatInfo { NumberDecimalDigits = 2 };
             Console.Error.WriteLine(StringUtils.GetShortClassName(this) + @" tagged " + numWords + @" words in " + numDocs + @" documents at " + nf.Format(wordspersec) + @" words per second.");
             if (resultsCounted)
             {
@@ -731,14 +736,14 @@ namespace Stanford.NER.Net.IE
             }
         }
 
-        public virtual void ClassifyAndWriteAnswersKBest(string testFile, int k, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void ClassifyAndWriteAnswersKBest(string testFile, int k, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             ObjectBank<List<IN>> documents = MakeObjectBankFromFile(testFile, readerAndWriter);
             PrintWriter pw = IOUtils.EncodedOutputStreamPrintWriter(Console.Out, flags.outputEncoding, true);
             ClassifyAndWriteAnswersKBest(documents, k, pw, readerAndWriter);
         }
 
-        public virtual void ClassifyAndWriteAnswersKBest(ObjectBank<List<IN>> documents, int k, PrintWriter printWriter, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void ClassifyAndWriteAnswersKBest(ObjectBank<List<IN>> documents, int k, TextWriter printWriter, DocumentReaderAndWriter<IN> readerAndWriter)
         {
             Timing timer = new Timing();
             int numWords = 0;
@@ -766,7 +771,7 @@ namespace Stanford.NER.Net.IE
             Console.Error.WriteLine(this.GetType().GetName() + @" tagged " + numWords + @" words in " + numSentences + @" documents at " + nf.Format(wordspersec) + @" words per second.");
         }
 
-        public virtual void ClassifyAndWriteViterbiSearchGraph(string testFile, string searchGraphPrefix, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void ClassifyAndWriteViterbiSearchGraph(string testFile, string searchGraphPrefix, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             Timing timer = new Timing();
             ObjectBank<List<IN>> documents = MakeObjectBankFromFile(testFile, readerAndWriter);
@@ -792,7 +797,7 @@ namespace Stanford.NER.Net.IE
             Console.Error.WriteLine(this.GetType().GetName() + @" tagged " + numWords + @" words in " + numSentences + @" documents at " + nf.Format(wordspersec) + @" words per second.");
         }
 
-        public virtual void WriteAnswers(List<IN> doc, PrintWriter printWriter, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void WriteAnswers(IList<IN> doc, TextWriter printWriter, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             if (flags.lowerNewgeneThreshold)
             {
@@ -806,7 +811,7 @@ namespace Stanford.NER.Net.IE
             }
         }
 
-        public virtual bool CountResults(List<IN> doc, Counter<String> entityTP, Counter<String> entityFP, Counter<String> entityFN)
+        public virtual bool CountResults(IList<IN> doc, Counter<String> entityTP, Counter<String> entityFP, Counter<String> entityFN)
         {
             string bg = (flags.evaluateBackground ? null : flags.backgroundSymbol);
             if (flags.entitySubclassification.EqualsIgnoreCase(@"iob2"))
@@ -1285,9 +1290,9 @@ namespace Stanford.NER.Net.IE
             }
         }
 
-        private PrintWriter cliqueWriter;
+        private TextWriter cliqueWriter;
         private int writtenNum;
-        protected virtual void PrintFeatures(IN wi, Collection<String> features)
+        protected virtual void PrintFeatures(IN wi, ICollection<String> features)
         {
             if (flags.printFeatures == null || writtenNum >= flags.printFeaturesUpto)
             {

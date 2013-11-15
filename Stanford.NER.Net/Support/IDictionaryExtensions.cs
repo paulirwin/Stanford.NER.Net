@@ -17,5 +17,18 @@ namespace Stanford.NER.Net.Support
         {
             dict[key] = value;
         }
+
+        public static void PutAll<TKey, TValue>(this IDictionary<TKey, TValue> dict, IEnumerable<KeyValuePair<TKey, TValue>> kvps)
+        {
+            foreach (var kvp in kvps)
+            {
+                dict[kvp.Key] = kvp.Value;
+            }
+        }
+
+        public static bool IsEmpty<TKey, TValue>(this IDictionary<TKey, TValue> dict)
+        {
+            return dict.Count == 0;
+        }
     }
 }

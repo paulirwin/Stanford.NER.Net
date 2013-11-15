@@ -1,9 +1,11 @@
-﻿using Stanford.NER.Net.ObjectBank;
+﻿using Stanford.NER.Net.Ling;
+using Stanford.NER.Net.ObjectBank;
 using Stanford.NER.Net.Sequences;
 using Stanford.NER.Net.Support;
 using Stanford.NER.Net.Util;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -1023,7 +1025,7 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        private List<IN> Classify(List<IN> document, Triple<int[][][], int[], double[][][]> documentDataAndLabels)
+        private List<IN> Classify(List<IN> document, Tuple<int[][][], int[], double[][][]> documentDataAndLabels)
         {
             if (flags.doGibbs)
             {
@@ -1034,7 +1036,7 @@ namespace Stanford.NER.Net.IE.CRF
                 catch (Exception e)
                 {
                     Console.Error.WriteLine(@"Error running testGibbs inference!");
-                    e.PrintStackTrace();
+                    //e.PrintStackTrace();
                     return null;
                 }
             }
@@ -1048,7 +1050,7 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        virtual void ClassifyAndWriteAnswers(Collection<List<IN>> documents, List<Triple<int[][][], int[], double[][][]>> documentDataAndLabels, PrintWriter printWriter, DocumentReaderAndWriter<IN> readerAndWriter)
+        virtual void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, IList<Tuple<int[][][], int[], double[][][]>> documentDataAndLabels, TextWriter printWriter, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             Timing timer = new Timing();
             Counter<String> entityTP = new ClassicCounter<String>();
@@ -1068,7 +1070,7 @@ namespace Stanford.NER.Net.IE.CRF
 
             long millis = timer.Stop();
             double wordspersec = numWords / (((double)millis) / 1000);
-            NumberFormat nf = new DecimalFormat(@"0.00");
+            NumberFormatInfo nf = new NumberFormatInfo { NumberDecimalDigits = 2 };
             if (!flags.suppressTestDebug)
                 Console.Error.WriteLine(StringUtils.GetShortClassName(this) + @" tagged " + numWords + @" words in " + numDocs + @" documents at " + nf.Format(wordspersec) + @" words per second.");
             if (resultsCounted && !flags.suppressTestDebug)
@@ -1077,18 +1079,18 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        public override SequenceModel GetSequenceModel(List<IN> doc)
+        public override ISequenceModel GetSequenceModel(IList<IN> doc)
         {
-            Triple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(doc);
+            Tuple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(doc);
             return GetSequenceModel(p);
         }
 
-        private SequenceModel GetSequenceModel(Triple<int[][][], int[], double[][][]> documentDataAndLabels)
+        private ISequenceModel GetSequenceModel(Tuple<int[][][], int[], double[][][]> documentDataAndLabels)
         {
             return new TestSequenceModel(GetCliqueTree(documentDataAndLabels));
         }
 
-        private CliquePotentialFunction GetCliquePotentialFunction()
+        private ICliquePotentialFunction GetCliquePotentialFunction()
         {
             if (cliquePotentialFunction == null)
             {
@@ -1120,22 +1122,22 @@ namespace Stanford.NER.Net.IE.CRF
                 return document;
             }
 
-            SequenceModel model = GetSequenceModel(document);
+            ISequenceModel model = GetSequenceModel(document);
             return ClassifyMaxEnt(document, model);
         }
 
-        private List<IN> ClassifyMaxEnt(List<IN> document, Triple<int[][][], int[], double[][][]> documentDataAndLabels)
+        private List<IN> ClassifyMaxEnt(IList<IN> document, Tuple<int[][][], int[], double[][][]> documentDataAndLabels)
         {
             if (document.IsEmpty())
             {
                 return document;
             }
 
-            SequenceModel model = GetSequenceModel(documentDataAndLabels);
+            ISequenceModel model = GetSequenceModel(documentDataAndLabels);
             return ClassifyMaxEnt(document, model);
         }
 
-        private List<IN> ClassifyMaxEnt(List<IN> document, SequenceModel model)
+        private List<IN> ClassifyMaxEnt(IList<IN> document, ISequenceModel model)
         {
             if (document.IsEmpty())
             {
@@ -1167,7 +1169,7 @@ namespace Stanford.NER.Net.IE.CRF
                 Collections.Reverse(document);
             }
 
-            for (int j = 0, docSize = document.size(); j < docSize; j++)
+            for (int j = 0, docSize = document.Size(); j < docSize; j++)
             {
                 IN wi = document.Get(j);
                 string guess = classIndex.Get(bestSequence[j + windowSize - 1]);
@@ -1184,11 +1186,11 @@ namespace Stanford.NER.Net.IE.CRF
 
         public virtual List<IN> ClassifyGibbs(List<IN> document)
         {
-            Triple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(document);
+            Tuple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(document);
             return ClassifyGibbs(document, p);
         }
 
-        public virtual List<IN> ClassifyGibbs(List<IN> document, Triple<int[][][], int[], double[][][]> documentDataAndLabels)
+        public virtual List<IN> ClassifyGibbs(List<IN> document, Tuple<int[][][], int[], double[][][]> documentDataAndLabels)
         {
             List<IN> newDocument = document;
             if (flags.useReverse)
@@ -1199,9 +1201,9 @@ namespace Stanford.NER.Net.IE.CRF
             }
 
             CRFCliqueTree<string> cliqueTree = GetCliqueTree(documentDataAndLabels);
-            SequenceModel model = cliqueTree;
-            SequenceListener listener = cliqueTree;
-            SequenceModel priorModel = null;
+            ISequenceModel model = cliqueTree;
+            ISequenceListener listener = cliqueTree;
+            ISequenceModel priorModel = null;
             SequenceListener priorListener = null;
             if (flags.useNERPrior)
             {
@@ -1247,12 +1249,12 @@ namespace Stanford.NER.Net.IE.CRF
                 TestSequenceModel testSequenceModel = new TestSequenceModel(cliqueTree);
                 ExactBestSequenceFinder tagInference = new ExactBestSequenceFinder();
                 int[] bestSequence = tagInference.BestSequence(testSequenceModel);
-                Array.Copy(bestSequence, windowSize - 1, sequence, 0, sequence.length);
+                Array.Copy(bestSequence, windowSize - 1, sequence, 0, sequence.Length);
             }
             else
             {
                 int[] initialSequence = SequenceGibbsSampler.GetRandomSequence(model);
-                Array.Copy(initialSequence, 0, sequence, 0, sequence.length);
+                Array.Copy(initialSequence, 0, sequence, 0, sequence.Length);
             }
 
             sampler.verbose = 0;
@@ -1274,7 +1276,7 @@ namespace Stanford.NER.Net.IE.CRF
                 Collections.Reverse(document);
             }
 
-            for (int j = 0, dsize = newDocument.size(); j < dsize; j++)
+            for (int j = 0, dsize = newDocument.Size(); j < dsize; j++)
             {
                 IN wi = document.Get(j);
                 if (wi == null)
@@ -1292,11 +1294,11 @@ namespace Stanford.NER.Net.IE.CRF
             return document;
         }
 
-        public virtual List<IN> ClassifyGibbsUsingPrior(List<IN> sentence, SequenceModel[] priorModels, SequenceListener[] priorListeners, double[] modelWts)
+        public virtual IList<IN> ClassifyGibbsUsingPrior(IList<IN> sentence, ISequenceModel[] priorModels, ISequenceListener[] priorListeners, double[] modelWts)
         {
-            if ((priorModels.length + 1) != modelWts.length)
+            if ((priorModels.Length + 1) != modelWts.Length)
                 throw new Exception(@"modelWts array should be longer than the priorModels array by 1 unit since it also includes the weight of the CRF model at position 0.");
-            Triple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(sentence);
+            Tuple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(sentence);
             List<IN> newDocument = sentence;
             if (flags.useReverse)
             {
@@ -1306,16 +1308,16 @@ namespace Stanford.NER.Net.IE.CRF
             }
 
             CRFCliqueTree<String> cliqueTree = GetCliqueTree(p);
-            SequenceModel model = cliqueTree;
-            SequenceListener listener = cliqueTree;
-            SequenceModel[] models = new SequenceModel[priorModels.length + 1];
+            ISequenceModel model = cliqueTree;
+            ISequenceListener listener = cliqueTree;
+            ISequenceModel[] models = new ISequenceModel[priorModels.Length + 1];
             models[0] = model;
-            for (int i = 1; i < models.length; i++)
+            for (int i = 1; i < models.Length; i++)
                 models[i] = priorModels[i - 1];
             model = new FactoredSequenceModel(models, modelWts);
-            SequenceListener[] listeners = new SequenceListener[priorListeners.length + 1];
+            ISequenceListener[] listeners = new ISequenceListener[priorListeners.Length + 1];
             listeners[0] = listener;
-            for (int i = 1; i < listeners.length; i++)
+            for (int i = 1; i < listeners.Length; i++)
                 listeners[i] = priorListeners[i - 1];
             listener = new FactoredSequenceListener(listeners);
             SequenceGibbsSampler sampler = new SequenceGibbsSampler(0, 0, listener);
@@ -1325,12 +1327,12 @@ namespace Stanford.NER.Net.IE.CRF
                 TestSequenceModel testSequenceModel = new TestSequenceModel(cliqueTree);
                 ExactBestSequenceFinder tagInference = new ExactBestSequenceFinder();
                 int[] bestSequence = tagInference.BestSequence(testSequenceModel);
-                Array.Copy(bestSequence, windowSize - 1, sequence, 0, sequence.length);
+                Array.Copy(bestSequence, windowSize - 1, sequence, 0, sequence.Length);
             }
             else
             {
                 int[] initialSequence = SequenceGibbsSampler.GetRandomSequence(model);
-                Array.Copy(initialSequence, 0, sequence, 0, sequence.length);
+                Array.Copy(initialSequence, 0, sequence, 0, sequence.Length);
             }
 
             SequenceGibbsSampler.verbose = 0;
@@ -1370,10 +1372,10 @@ namespace Stanford.NER.Net.IE.CRF
             return sentence;
         }
 
-        public virtual List<IN> ClassifyGibbsUsingPrior(List<IN> sentence, SequenceModel priorModel, SequenceListener priorListener, double model1Wt, double model2Wt)
+        public virtual IList<IN> ClassifyGibbsUsingPrior(IList<IN> sentence, ISequenceModel priorModel, ISequenceListener priorListener, double model1Wt, double model2Wt)
         {
-            Triple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(sentence);
-            List<IN> newDocument = sentence;
+            Tuple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(sentence);
+            IList<IN> newDocument = sentence;
             if (flags.useReverse)
             {
                 newDocument = new List<IN>(sentence);
@@ -1495,7 +1497,7 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        public virtual List<CRFCliqueTree<String>> GetCliqueTrees(string filename, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual List<CRFCliqueTree<String>> GetCliqueTrees(string filename, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             flags.ocrTrain = false;
             List<CRFCliqueTree<String>> cts = new List<CRFCliqueTree<String>>();
@@ -1508,7 +1510,7 @@ namespace Stanford.NER.Net.IE.CRF
             return cts;
         }
 
-        public virtual CRFCliqueTree<String> GetCliqueTree(Triple<int[][][], int[], double[][][]> p)
+        public virtual CRFCliqueTree<String> GetCliqueTree(Tuple<int[][][], int[], double[][][]> p)
         {
             int[][][] data = p.First();
             double[][][] featureVal = p.Third();
@@ -2588,7 +2590,7 @@ namespace Stanford.NER.Net.IE.CRF
 
         protected static void SaveProcessedData(List datums, string filename)
         {
-            System.err.Print(@"Saving processed data of size " + datums.Size() + @" to serialized file...");
+            Console.Error.Write(@"Saving processed data of size " + datums.Size() + @" to serialized file...");
             ObjectOutputStream oos = null;
             try
             {
@@ -2606,15 +2608,15 @@ namespace Stanford.NER.Net.IE.CRF
             Console.Error.WriteLine(@"done.");
         }
 
-        protected static List<List<CRFDatum<Collection<String>, String>>> LoadProcessedData(string filename)
+        protected static List<List<CRFDatum<ICollection<String>, String>>> LoadProcessedData(string filename)
         {
-            System.err.Print(@"Loading processed data from serialized file...");
+            Console.Error.Write(@"Loading processed data from serialized file...");
             ObjectInputStream ois = null;
-            List<List<CRFDatum<Collection<String>, String>>> result = Collections.EmptyList();
+            List<List<CRFDatum<ICollection<String>, String>>> result = Collections.EmptyList();
             try
             {
                 ois = new ObjectInputStream(new FileInputStream(filename));
-                result = (List<List<CRFDatum<Collection<String>, String>>>)ois.ReadObject();
+                result = (List<List<CRFDatum<ICollection<String>, String>>>)ois.ReadObject();
             }
             catch (Exception e)
             {
@@ -3399,7 +3401,7 @@ namespace Stanford.NER.Net.IE.CRF
             return crf;
         }
 
-        public static CRFClassifier<T> GetClassifier<T>(InputStream in_renamed)
+        public static CRFClassifier<T> GetClassifier<T>(Stream in_renamed)
             where T : ICoreMap
         {
             CRFClassifier<T> crf = new CRFClassifier<ICoreMap>();
@@ -3579,7 +3581,7 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        public override List<IN> ClassifyWithGlobalInformation(List<IN> tokenSeq, CoreMap doc, CoreMap sent)
+        public override IList<IN> ClassifyWithGlobalInformation(IList<IN> tokenSeq, ICoreMap doc, ICoreMap sent)
         {
             return Classify(tokenSeq);
         }

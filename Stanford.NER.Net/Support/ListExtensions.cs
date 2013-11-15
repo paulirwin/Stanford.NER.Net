@@ -30,5 +30,10 @@ namespace Stanford.NER.Net
         {
             return collection.Count;
         }
+
+        public static bool IsEmpty<T>(this IList<T> list)
+        {
+            return list.Count == 0;
+        }
     }
 }

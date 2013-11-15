@@ -8,6 +8,11 @@ namespace Stanford.NER.Net.Support
 {
     public static class Collections
     {
+        public static IList<T> SingletonList<T>(this T obj)
+        {
+            return new[] { obj };
+        }
+
         public static ISet<TKey> NewSetFromMap<TKey, TValue>(IDictionary<TKey, TValue> map)
         {
             return new SetFromMap<TKey, TValue>(map);
@@ -16,6 +21,12 @@ namespace Stanford.NER.Net.Support
         public static void Reverse<T>(this List<T> coll)
         {
             coll.Reverse();
+        }
+
+        public static IDictionary<TKey, TValue> EmptyMap<TKey, TValue>()
+        {
+            // TODO: is it worth making this a singleton value?
+            return new Dictionary<TKey, TValue>();
         }
 
         private class SetFromMap<TKey, TValue> : ISet<TKey>

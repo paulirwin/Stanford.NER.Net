@@ -249,15 +249,15 @@ public void Reset()
         return size;
     }
 
-    private static ThreadLocal<IdentityHashSet<CoreMap>> toStringCalled = new ThreadLocal<IdentityHashSet<CoreMap>>();
+    private static ThreadLocal<IdentityHashSet<ICoreMap>> toStringCalled = new ThreadLocal<IdentityHashSet<ICoreMap>>();
 
     public override string ToString()
     {
-        IdentityHashSet<CoreMap> calledSet = toStringCalled.Get();
+        IdentityHashSet<ICoreMap> calledSet = toStringCalled.Get();
         bool createdCalledSet = (calledSet == null);
         if (createdCalledSet)
         {
-            calledSet = new IdentityHashSet<CoreMap>();
+            calledSet = new IdentityHashSet<ICoreMap>();
             toStringCalled.Set(calledSet);
         }
 
@@ -396,7 +396,7 @@ public void Reset()
         }
     }
 
-    private static ThreadLocal<TwoDimensionalMap<CoreMap, CoreMap, Boolean>> equalsCalled = new ThreadLocal<TwoDimensionalMap<CoreMap, CoreMap, Boolean>>();
+    private static ThreadLocal<TwoDimensionalMap<ICoreMap, ICoreMap, Boolean>> equalsCalled = new ThreadLocal<TwoDimensionalMap<ICoreMap, ICoreMap, Boolean>>();
     public override bool Equals(Object obj)
     {
         if (!(obj is ICoreMap))

@@ -1,4 +1,5 @@
-﻿using Stanford.NER.Net.Util;
+﻿using Stanford.NER.Net.Ling;
+using Stanford.NER.Net.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
