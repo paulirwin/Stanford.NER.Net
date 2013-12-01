@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 namespace Stanford.NER.Net.Util
 {
     public class HashIndex<E> : IIndex<E> //, IRandomAccess
-        where E : class
     {
         List<E> objects = new List<E>();
         IDictionary<E, int?> indexes = new HashMap<E, int?>();

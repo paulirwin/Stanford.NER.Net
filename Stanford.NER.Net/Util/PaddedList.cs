@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 namespace Stanford.NER.Net.Util
 {
     public class PaddedList<E> : Collection<E>
-        where E : class
     {
         private readonly E padding;
 
@@ -38,7 +37,7 @@ namespace Stanford.NER.Net.Util
         }
 
         public PaddedList(IList<E> l)
-            : this(l, null)
+            : this(l, default(E))
         {
         }
 

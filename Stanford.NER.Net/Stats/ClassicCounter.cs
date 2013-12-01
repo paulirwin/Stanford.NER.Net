@@ -15,6 +15,7 @@ namespace Stanford.NER.Net.Stats
         private double totalCount;
         private double defaultValue;
         private MutableDouble tempMDouble;
+
         public ClassicCounter()
             : this(MapFactory<E, MutableDouble>.HashMapFactory())
         {
@@ -89,7 +90,7 @@ namespace Stanford.NER.Net.Stats
 
         public double GetCount(Object key)
         {
-            Number count = map.Get(key);
+            MutableDouble count = map.Get((E)key);
             if (count == null)
             {
                 return defaultValue;
@@ -194,7 +195,7 @@ namespace Stanford.NER.Net.Stats
 
         public ICollection<E> KeySet()
         {
-            return map.KeySet();
+            return map.Keys;
         }
 
         public ICollection<Double> Values()

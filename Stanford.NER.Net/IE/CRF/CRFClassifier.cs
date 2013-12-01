@@ -1,14 +1,17 @@
 ﻿using Stanford.NER.Net.Ling;
 using Stanford.NER.Net.ObjectBank;
+using Stanford.NER.Net.Optimization;
 using Stanford.NER.Net.Sequences;
 using Stanford.NER.Net.Stats;
 using Stanford.NER.Net.Support;
 using Stanford.NER.Net.Util;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -20,7 +23,7 @@ namespace Stanford.NER.Net.IE.CRF
     {
         List<IIndex<CRFLabel>> labelIndices;
         IIndex<String> tagIndex;
-        Tuple<double[][], double[][]> entityMatrices;
+        Pair<double[][], double[][]> entityMatrices;
         ICliquePotentialFunction cliquePotentialFunction;
         IHasCliquePotentialFunction cliquePotentialFunctionHelper;
         double[][] weights;
@@ -197,7 +200,7 @@ namespace Stanford.NER.Net.IE.CRF
                 int newIndex = featureIndex.IndexOf(feature);
                 if (weights[newIndex].Length < crf.weights[i].Length)
                 {
-                    throw new Exception(@"Incompatible CRFClassifier: weight length mismatch for feature " + newIndex + @": " + featureIndex.Get(newIndex) + @" (also feature " + i + @": " + crf.featureIndex.Get(i) + @") " + @", len1=" + weights[newIndex].length + @", len2=" + crf.weights[i].length);
+                    throw new Exception(@"Incompatible CRFClassifier: weight length mismatch for feature " + newIndex + @": " + featureIndex.Get(newIndex) + @" (also feature " + i + @": " + crf.featureIndex.Get(i) + @") " + @", len1=" + weights[newIndex].Length + @", len2=" + crf.weights[i].Length);
                 }
 
                 int featureTypeIndex = map[newIndex];
@@ -289,12 +292,12 @@ namespace Stanford.NER.Net.IE.CRF
             featureIndex = newFeatureIndex;
         }
 
-        public virtual Tuple<int[][][], int[], double[][][]> DocumentToDataAndLabels(List<IN> document)
+        public virtual Triple<int[][][], int[], double[][][]> DocumentToDataAndLabels(IList<IN> document)
         {
             return DocumentToDataAndLabels(document, false);
         }
 
-        public virtual Tuple<int[][][], int[], double[][][]> DocumentToDataAndLabels(List<IN> document, bool trainTime)
+        public virtual Triple<int[][][], int[], double[][][]> DocumentToDataAndLabels(IList<IN> document, bool trainTime)
         {
             bool droppedFeature = false;
             int docSize = document.Count;
@@ -351,7 +354,7 @@ namespace Stanford.NER.Net.IE.CRF
                 }
 
                 IN wi = document[j];
-                labels[j] = classIndex.IndexOf(wi.Get(typeof(CoreAnnotations.AnswerAnnotation)));
+                labels[j] = classIndex.IndexOf(wi.Get<string>(typeof(CoreAnnotations.AnswerAnnotation)));
             }
 
             if (flags.useReverse)
@@ -364,7 +367,7 @@ namespace Stanford.NER.Net.IE.CRF
                 data = TransformDocData(data);
             }
 
-            return new Tuple<int[][][], int[], double[][][]>(data, labels, featureVals);
+            return new Triple<int[][][], int[], double[][][]>(data, labels, featureVals);
         }
 
         private int[][][] TransformDocData(int[][][] docData)
@@ -417,7 +420,7 @@ namespace Stanford.NER.Net.IE.CRF
                 Collections.Reverse(document);
             }
 
-            NumberFormat nf = new DecimalFormat();
+            NumberFormatInfo nf = CultureInfo.CurrentCulture.NumberFormat;
             List<String> classes = new List<String>();
             for (int i = 0; i < classIndex.Size(); i++)
             {
@@ -427,7 +430,7 @@ namespace Stanford.NER.Net.IE.CRF
             String[] columnHeaders = classes.ToArray();
             for (int j = 0; j < document.Count; j++)
             {
-                Console.Out.WriteLine(@"--== " + document[j].Get(typeof(CoreAnnotations.TextAnnotation)) + @" ==--");
+                Console.Out.WriteLine(@"--== " + document[j].Get<string>(typeof(CoreAnnotations.TextAnnotation)) + @" ==--");
                 List<String[]> lines = new List<String[]>();
                 List<String> rowHeaders = new List<String>();
                 List<String> line = new List<String>();
@@ -459,7 +462,7 @@ namespace Stanford.NER.Net.IE.CRF
 
                                 foreach (double value in values)
                                 {
-                                    line.Add(nf.Format(value));
+                                    line.Add(value.ToString(nf));
                                 }
 
                                 lines.Add(line.ToArray());
@@ -479,7 +482,7 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        public virtual Tuple<int[][][][], int[][], double[][][][]> DocumentsToDataAndLabels(ICollection<List<IN>> documents)
+        public virtual Triple<int[][][][], int[][], double[][][][]> DocumentsToDataAndLabels(ICollection<List<IN>> documents)
         {
             List<int[][][]> data = new List<int[][][]>();
             List<double[][][]> featureVal = new List<double[][][]>();
@@ -487,11 +490,11 @@ namespace Stanford.NER.Net.IE.CRF
             int numDatums = 0;
             foreach (List<IN> doc in documents)
             {
-                Tuple<int[][][], int[], double[][][]> docTriple = DocumentToDataAndLabels(doc, true);
-                data.Add(docTriple.Item1);
-                labels.Add(docTriple.Item2);
+                Triple<int[][][], int[], double[][][]> docTriple = DocumentToDataAndLabels(doc, true);
+                data.Add(docTriple.First());
+                labels.Add(docTriple.Second());
                 if (flags.useEmbedding)
-                    featureVal.Add(docTriple.Item3);
+                    featureVal.Add(docTriple.Third());
                 numDatums += doc.Count;
             }
 
@@ -503,16 +506,16 @@ namespace Stanford.NER.Net.IE.CRF
             double[][][][] featureValArr = null;
             if (flags.useEmbedding)
                 featureValArr = featureVal.ToArray();
-            return new Tuple<int[][][][], int[][], double[][][][]>(data.ToArray(), labels.ToArray(), featureValArr);
+            return new Triple<int[][][][], int[][], double[][][][]>(data.ToArray(), labels.ToArray(), featureValArr);
         }
 
-        public virtual List<Tuple<int[][][], int[], double[][][]>> DocumentsToDataAndLabelsList(ICollection<List<IN>> documents)
+        public virtual List<Triple<int[][][], int[], double[][][]>> DocumentsToDataAndLabelsList(ICollection<List<IN>> documents)
         {
             int numDatums = 0;
-            List<Tuple<int[][][], int[], double[][][]>> docList = new List<Tuple<int[][][], int[], double[][][]>>();
+            List<Triple<int[][][], int[], double[][][]>> docList = new List<Triple<int[][][], int[], double[][][]>>();
             foreach (List<IN> doc in documents)
             {
-                Tuple<int[][][], int[], double[][][]> docTriple = DocumentToDataAndLabels(doc);
+                Triple<int[][][], int[], double[][][]> docTriple = DocumentToDataAndLabels(doc);
                 docList.Add(docTriple);
                 numDatums += doc.Count;
             }
@@ -633,7 +636,7 @@ namespace Stanford.NER.Net.IE.CRF
                             }
                             else
                             {
-                                seenBackgroundFeatures[k].RemoveAll(cliqueFeatures);
+                                seenBackgroundFeatures[k].ExceptWith(cliqueFeatures);
                                 featureIndices[k].AddAll(cliqueFeatures);
                             }
                         }
@@ -664,7 +667,6 @@ namespace Stanford.NER.Net.IE.CRF
                 featureIndexToTemplateIndex = new HashMap<int, int>();
             }
 
-            Matcher m = null;
             string groupSuffix = null;
             for (int i = 0; i < windowSize; i++)
             {
@@ -677,11 +679,10 @@ namespace Stanford.NER.Net.IE.CRF
                     featureIndexMap.Add(index);
                     if (flags.groupByFeatureTemplate)
                     {
-                        m = suffixPatt.Matcher(str);
                         groupSuffix = @"NoTemplate";
-                        if (m.Matches())
+                        if (suffixPatt.IsMatch(str))
                         {
-                            groupSuffix = m.Group(1);
+                            groupSuffix = suffixPatt.Match(str).Groups[1].Value;
                         }
 
                         groupSuffix += @"-c:" + i;
@@ -778,7 +779,7 @@ namespace Stanford.NER.Net.IE.CRF
             return labelIndex;
         }
 
-        public virtual CRFDatum<List<String>, CRFLabel> MakeDatum(List<IN> info, int loc, FeatureFactory<IN> featureFactory)
+        public virtual CRFDatum<List<String>, CRFLabel> MakeDatum(IList<IN> info, int loc, FeatureFactory<IN> featureFactory)
         {
             PaddedList<IN> pInfo = new PaddedList<IN>(info, pad);
             List<List<String>> features = new List<List<String>>();
@@ -791,6 +792,8 @@ namespace Stanford.NER.Net.IE.CRF
                 windowCliques.RemoveAll(done);
                 done.AddAll(windowCliques);
                 double[] featureValArr = null;
+
+                Regex rx = new Regex("(-)?\\d+(\\.\\d*)?");
                 if (flags.useEmbedding && i == 0)
                 {
                     List<double[]> embeddingList = new List<double[]>();
@@ -803,7 +806,7 @@ namespace Stanford.NER.Net.IE.CRF
                         {
                             currentWord = info.Get(loc).Get<string>(typeof(CoreAnnotations.TextAnnotation));
                             string word = currentWord.ToLower();
-                            word = word.ReplaceAll(@"(-)?\\d+(\\.\\d*)?", @"0");
+                            word = rx.Replace(word, @"0");
                             if (embeddings.ContainsKey(word))
                                 embedding = embeddings.Get(word);
                             else
@@ -923,10 +926,11 @@ namespace Stanford.NER.Net.IE.CRF
         {
             private readonly int window;
             private readonly int numClasses;
-            private readonly CRFCliqueTree cliqueTree;
+            private readonly CRFCliqueTree<IN> cliqueTree;
             private readonly int[] tags;
             private readonly int[] backgroundTag;
-            public TestSequenceModel(CRFCliqueTree cliqueTree)
+
+            public TestSequenceModel(CRFCliqueTree<IN> cliqueTree)
             {
                 this.cliqueTree = cliqueTree;
                 this.window = cliqueTree.Window();
@@ -1026,7 +1030,7 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        private List<IN> Classify(List<IN> document, Tuple<int[][][], int[], double[][][]> documentDataAndLabels)
+        private List<IN> Classify(List<IN> document, Triple<int[][][], int[], double[][][]> documentDataAndLabels)
         {
             if (flags.doGibbs)
             {
@@ -1051,7 +1055,7 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        virtual void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, IList<Tuple<int[][][], int[], double[][][]>> documentDataAndLabels, TextWriter printWriter, IDocumentReaderAndWriter<IN> readerAndWriter)
+        void ClassifyAndWriteAnswers(ICollection<List<IN>> documents, IList<Triple<int[][][], int[], double[][][]>> documentDataAndLabels, TextWriter printWriter, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             Timing timer = new Timing();
             ICounter<String> entityTP = new ClassicCounter<String>();
@@ -1082,11 +1086,11 @@ namespace Stanford.NER.Net.IE.CRF
 
         public override ISequenceModel GetSequenceModel(IList<IN> doc)
         {
-            Tuple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(doc);
+            Triple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(doc);
             return GetSequenceModel(p);
         }
 
-        private ISequenceModel GetSequenceModel(Tuple<int[][][], int[], double[][][]> documentDataAndLabels)
+        private ISequenceModel GetSequenceModel(Triple<int[][][], int[], double[][][]> documentDataAndLabels)
         {
             return new TestSequenceModel(GetCliqueTree(documentDataAndLabels));
         }
@@ -1116,7 +1120,7 @@ namespace Stanford.NER.Net.IE.CRF
             cliquePotentialFunction = cliquePotentialFunctionHelper.GetCliquePotentialFunction(x);
         }
 
-        public virtual List<IN> ClassifyMaxEnt(List<IN> document)
+        public virtual IList<IN> ClassifyMaxEnt(List<IN> document)
         {
             if (document.IsEmpty())
             {
@@ -1127,7 +1131,7 @@ namespace Stanford.NER.Net.IE.CRF
             return ClassifyMaxEnt(document, model);
         }
 
-        private List<IN> ClassifyMaxEnt(IList<IN> document, Tuple<int[][][], int[], double[][][]> documentDataAndLabels)
+        private IList<IN> ClassifyMaxEnt(IList<IN> document, Triple<int[][][], int[], double[][][]> documentDataAndLabels)
         {
             if (document.IsEmpty())
             {
@@ -1138,7 +1142,7 @@ namespace Stanford.NER.Net.IE.CRF
             return ClassifyMaxEnt(document, model);
         }
 
-        private List<IN> ClassifyMaxEnt(IList<IN> document, ISequenceModel model)
+        private IList<IN> ClassifyMaxEnt(IList<IN> document, ISequenceModel model)
         {
             if (document.IsEmpty())
             {
@@ -1150,7 +1154,7 @@ namespace Stanford.NER.Net.IE.CRF
                 flags.inferenceType = @"Viterbi";
             }
 
-            BestSequenceFinder tagInference;
+            IBestSequenceFinder tagInference;
             if (flags.inferenceType.EqualsIgnoreCase(@"Viterbi"))
             {
                 tagInference = new ExactBestSequenceFinder();
@@ -1187,11 +1191,11 @@ namespace Stanford.NER.Net.IE.CRF
 
         public virtual List<IN> ClassifyGibbs(List<IN> document)
         {
-            Tuple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(document);
+            Triple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(document);
             return ClassifyGibbs(document, p);
         }
 
-        public virtual List<IN> ClassifyGibbs(List<IN> document, Tuple<int[][][], int[], double[][][]> documentDataAndLabels)
+        public virtual List<IN> ClassifyGibbs(List<IN> document, Triple<int[][][], int[], double[][][]> documentDataAndLabels)
         {
             List<IN> newDocument = document;
             if (flags.useReverse)
@@ -1205,7 +1209,7 @@ namespace Stanford.NER.Net.IE.CRF
             ISequenceModel model = cliqueTree;
             ISequenceListener listener = cliqueTree;
             ISequenceModel priorModel = null;
-            SequenceListener priorListener = null;
+            ISequenceListener priorListener = null;
             if (flags.useNERPrior)
             {
                 EntityCachingAbstractSequencePrior<IN> prior = new EmpiricalNERPrior<IN>(flags.backgroundSymbol, classIndex, newDocument);
@@ -1299,8 +1303,8 @@ namespace Stanford.NER.Net.IE.CRF
         {
             if ((priorModels.Length + 1) != modelWts.Length)
                 throw new Exception(@"modelWts array should be longer than the priorModels array by 1 unit since it also includes the weight of the CRF model at position 0.");
-            Tuple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(sentence);
-            List<IN> newDocument = sentence;
+            Triple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(sentence);
+            IList<IN> newDocument = sentence;
             if (flags.useReverse)
             {
                 Collections.Reverse(sentence);
@@ -1355,7 +1359,7 @@ namespace Stanford.NER.Net.IE.CRF
                 Collections.Reverse(sentence);
             }
 
-            for (int j = 0, dsize = newDocument.size(); j < dsize; j++)
+            for (int j = 0, dsize = newDocument.Count; j < dsize; j++)
             {
                 IN wi = sentence.Get(j);
                 if (wi == null)
@@ -1375,7 +1379,7 @@ namespace Stanford.NER.Net.IE.CRF
 
         public virtual IList<IN> ClassifyGibbsUsingPrior(IList<IN> sentence, ISequenceModel priorModel, ISequenceListener priorListener, double model1Wt, double model2Wt)
         {
-            Tuple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(sentence);
+            Triple<int[][][], int[], double[][][]> p = DocumentToDataAndLabels(sentence);
             IList<IN> newDocument = sentence;
             if (flags.useReverse)
             {
@@ -1384,8 +1388,8 @@ namespace Stanford.NER.Net.IE.CRF
             }
 
             CRFCliqueTree<String> cliqueTree = GetCliqueTree(p);
-            SequenceModel model = cliqueTree;
-            SequenceListener listener = cliqueTree;
+            ISequenceModel model = cliqueTree;
+            ISequenceListener listener = cliqueTree;
             model = new FactoredSequenceModel(model, priorModel, model1Wt, model2Wt);
             listener = new FactoredSequenceListener(listener, priorListener);
             SequenceGibbsSampler sampler = new SequenceGibbsSampler(0, 0, listener);
@@ -1395,12 +1399,12 @@ namespace Stanford.NER.Net.IE.CRF
                 TestSequenceModel testSequenceModel = new TestSequenceModel(cliqueTree);
                 ExactBestSequenceFinder tagInference = new ExactBestSequenceFinder();
                 int[] bestSequence = tagInference.BestSequence(testSequenceModel);
-                Array.Copy(bestSequence, windowSize - 1, sequence, 0, sequence.length);
+                Array.Copy(bestSequence, windowSize - 1, sequence, 0, sequence.Length);
             }
             else
             {
                 int[] initialSequence = SequenceGibbsSampler.GetRandomSequence(model);
-                Array.Copy(initialSequence, 0, sequence, 0, sequence.length);
+                Array.Copy(initialSequence, 0, sequence, 0, sequence.Length);
             }
 
             SequenceGibbsSampler.verbose = 0;
@@ -1422,7 +1426,7 @@ namespace Stanford.NER.Net.IE.CRF
                 Collections.Reverse(sentence);
             }
 
-            for (int j = 0, dsize = newDocument.size(); j < dsize; j++)
+            for (int j = 0, dsize = newDocument.Count; j < dsize; j++)
             {
                 IN wi = sentence.Get(j);
                 if (wi == null)
@@ -1447,33 +1451,33 @@ namespace Stanford.NER.Net.IE.CRF
             for (int i = 0; i < cliqueTree.Length(); i++)
             {
                 IN wi = document.Get(i);
-                Console.Out.Write(wi.Get(typeof(CoreAnnotations.TextAnnotation)) + '\n');
-                for (Iterator<String> iter = classIndex.iterator(); iter.HasNext(); )
+                Console.Out.Write(wi.Get<string>(typeof(CoreAnnotations.TextAnnotation)) + '\n');
+                bool first = true;
+
+                for (IEnumerator<String> iter = classIndex.GetEnumerator(); iter.MoveNext(); )
                 {
-                    string label = iter.Next();
+                    if (first)
+                        first = false;
+                    else
+                        Console.Out.Write("\t");
+
+                    string label = iter.Current;
                     int index = classIndex.IndexOf(label);
                     double prob = cliqueTree.Prob(i, index);
                     Console.Out.Write(label + '=' + prob);
-                    if (iter.HasNext())
-                    {
-                        Console.Out.Write(@"\t");
-                    }
-                    else
-                    {
-                        Console.Out.Write(@"\n");
-                    }
                 }
+                Console.Out.Write("\n");
             }
         }
 
-        public virtual void PrintFirstOrderProbs(string filename, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void PrintFirstOrderProbs(string filename, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             flags.ocrTrain = false;
             ObjectBank<List<IN>> docs = MakeObjectBankFromFile(filename, readerAndWriter);
             PrintFirstOrderProbsDocuments(docs);
         }
 
-        public virtual void PrintFactorTable(string filename, DocumentReaderAndWriter<IN> readerAndWriter)
+        public virtual void PrintFactorTable(string filename, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             flags.ocrTrain = false;
             ObjectBank<List<IN>> docs = MakeObjectBankFromFile(filename, readerAndWriter);
@@ -1511,11 +1515,11 @@ namespace Stanford.NER.Net.IE.CRF
             return cts;
         }
 
-        public virtual CRFCliqueTree<String> GetCliqueTree(Tuple<int[][][], int[], double[][][]> p)
+        public virtual CRFCliqueTree<String> GetCliqueTree(Triple<int[][][], int[], double[][][]> p)
         {
             int[][][] data = p.First();
             double[][][] featureVal = p.Third();
-            return CRFCliqueTree.GetCalibratedCliqueTree(data, labelIndices, classIndex.Size(), classIndex, flags.backgroundSymbol, GetCliquePotentialFunction(), featureVal);
+            return CRFCliqueTree<string>.GetCalibratedCliqueTree(data, labelIndices, classIndex.Size(), classIndex, flags.backgroundSymbol, GetCliquePotentialFunction(), featureVal);
         }
 
         public virtual CRFCliqueTree<String> GetCliqueTree(List<IN> document)
@@ -1529,10 +1533,10 @@ namespace Stanford.NER.Net.IE.CRF
             CRFCliqueTree<String> cliqueTree = GetCliqueTree(document);
             FactorTable[] factorTables = cliqueTree.GetFactorTables();
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < factorTables.length; i++)
+            for (int i = 0; i < factorTables.Length; i++)
             {
                 IN wi = document.Get(i);
-                sb.Append(wi.Get(typeof(CoreAnnotations.TextAnnotation)));
+                sb.Append(wi.Get<string>(typeof(CoreAnnotations.TextAnnotation)));
                 sb.Append(@"\t");
                 FactorTable table = factorTables[i];
                 double totalMass = table.TotalMass();
@@ -1559,52 +1563,49 @@ namespace Stanford.NER.Net.IE.CRF
             for (int i = 0; i < cliqueTree.Length(); i++)
             {
                 IN wi = document.Get(i);
-                Console.Out.Write(wi.Get(typeof(CoreAnnotations.TextAnnotation)) + '\n');
-                for (Iterator<String> iter = classIndex.iterator(); iter.HasNext(); )
+                Console.Out.Write(wi.Get<string>(typeof(CoreAnnotations.TextAnnotation)) + '\n');
+                bool first = true;
+
+                for (IEnumerator<String> iter = classIndex.GetEnumerator(); iter.MoveNext(); )
                 {
-                    string label = iter.Next();
+                    if (first)
+                        first = false;
+                    else
+                        Console.Out.Write("\t");
+
+                    string label = iter.Current;
                     int index = classIndex.IndexOf(label);
                     if (i == 0)
                     {
                         double prob = cliqueTree.Prob(i, index);
                         Console.Out.Write(label + '=' + prob);
-                        if (iter.HasNext())
-                        {
-                            Console.Out.Write(@"\t");
-                        }
-                        else
-                        {
-                            Console.Out.Write(@"\n");
-                        }
                     }
                     else
                     {
-                        for (Iterator<String> iter1 = classIndex.iterator(); iter1.HasNext(); )
-                        {
-                            string label1 = iter1.Next();
-                            int index1 = classIndex.IndexOf(label1);
-                            double prob = cliqueTree.Prob(i, new int
-                        {
-                        index1, index
-                        }
+                        bool first2 = true;
 
-                            );
-                            Console.Out.Write(label1 + '_' + label + '=' + prob);
-                            if (iter.HasNext() || iter1.HasNext())
-                            {
-                                Console.Out.Write(@"\t");
-                            }
+                        for (IEnumerator<String> iter1 = classIndex.GetEnumerator(); iter1.MoveNext(); )
+                        {
+                            if (first2)
+                                first2 = false;
                             else
-                            {
-                                Console.Out.Write(@"\n");
-                            }
+                                Console.Out.Write("\t");
+
+                            string label1 = iter1.Current;
+                            int index1 = classIndex.IndexOf(label1);
+                            double prob = cliqueTree.Prob(i, new int[] { index1, index });
+                            Console.Out.Write(label1 + '_' + label + '=' + prob);
+                            
                         }
+                        Console.Out.Write("\n");
                     }
                 }
+
+                Console.Out.Write("\n");
             }
         }
 
-        public override void Train(Collection<List<IN>> docs, DocumentReaderAndWriter<IN> readerAndWriter)
+        public override void Train(ICollection<IList<IN>> docs, IDocumentReaderAndWriter<IN> readerAndWriter)
         {
             Timing timer = new Timing();
             timer.Start();
@@ -1640,10 +1641,10 @@ namespace Stanford.NER.Net.IE.CRF
                 Triple<int[][][][], int[][], double[][][][]> dataAndLabelsAndFeatureVals = DocumentsToDataAndLabels(docs);
                 elapsedMs = timer.Stop();
                 Console.Error.WriteLine(@"Time to convert docs to data/labels: " + Timing.ToSecondsString(elapsedMs) + @" seconds");
-                Evaluator[] evaluators = null;
+                IEvaluator[] evaluators = null;
                 if (flags.evaluateIters > 0 || flags.terminateOnEvalImprovement)
                 {
-                    List<Evaluator> evaluatorList = new List<Evaluator>();
+                    List<IEvaluator> evaluatorList = new List<IEvaluator>();
                     if (flags.useMemoryEvaluator)
                         evaluatorList.Add(new MemoryEvaluator());
                     if (flags.evaluateTrain)
@@ -1653,14 +1654,14 @@ namespace Stanford.NER.Net.IE.CRF
                         int[][][][] data = dataAndLabelsAndFeatureVals.First();
                         int[][] labels = dataAndLabelsAndFeatureVals.Second();
                         double[][][][] featureVal = dataAndLabelsAndFeatureVals.Third();
-                        for (int j = 0; j < data.length; j++)
+                        for (int j = 0; j < data.Length; j++)
                         {
                             Triple<int[][][], int[], double[][][]> p = new Triple<int[][][], int[], double[][][]>(data[j], labels[j], featureVal[j]);
                             trainDataAndLabels.Add(p);
                         }
 
                         crfEvaluator.SetTestData(docs, trainDataAndLabels);
-                        if (flags.evalCmd.Length() > 0)
+                        if (flags.evalCmd.Length > 0)
                             crfEvaluator.SetEvalCmd(flags.evalCmd);
                         evaluatorList.Add(crfEvaluator);
                     }
@@ -1750,7 +1751,7 @@ namespace Stanford.NER.Net.IE.CRF
                         CRFNonLinearSecondOrderLogConditionalObjectiveFunction func = new CRFNonLinearSecondOrderLogConditionalObjectiveFunction(data, labels, windowSize, classIndex, labelIndices, map, flags, nodeFeatureIndicesMap.Size(), edgeFeatureIndicesMap.Size());
                         cliquePotentialFunctionHelper = func;
                         double[] allWeights = TrainWeightsUsingNonLinearCRF(func, evaluators);
-                        Tuple<double[][], double[][], double[][], double[][]> params_renamed = func.SeparateWeights(allWeights);
+                        Quadruple<double[][], double[][], double[][], double[][]> params_renamed = func.SeparateWeights(allWeights);
                         this.inputLayerWeights4Edge = params_renamed.First();
                         this.outputLayerWeights4Edge = params_renamed.Second();
                         this.inputLayerWeights = params_renamed.Third();
@@ -1789,7 +1790,7 @@ namespace Stanford.NER.Net.IE.CRF
 
                         cliquePotentialFunctionHelper = func;
                         double[] allWeights = TrainWeightsUsingNonLinearCRF(func, evaluators);
-                        Tuple<double[][], double[][], double[][]> params_renamed = func.SeparateWeights(allWeights);
+                        Triple<double[][], double[][], double[][]> params_renamed = func.SeparateWeights(allWeights);
                         this.linearWeights = params_renamed.First();
                         this.inputLayerWeights = params_renamed.Second();
                         this.outputLayerWeights = params_renamed.Third();
@@ -1925,9 +1926,9 @@ namespace Stanford.NER.Net.IE.CRF
         {
             int numOfNodeFeatures = nodeFeatureIndicesMap.Size();
             int beginIndex = 0;
-            int endIndex = Math.Min((int)(numOfNodeFeatures / (totalNumOfFeatureSlices + 0.0) * numOfFeatureSlices), numOfNodeFeatures);
-            List<int> nodeFeatureOriginalIndices = nodeFeatureIndicesMap.ObjectsList();
-            List<int> edgeFeatureOriginalIndices = edgeFeatureIndicesMap.ObjectsList();
+            int endIndex = System.Math.Min((int)(numOfNodeFeatures / (totalNumOfFeatureSlices + 0.0) * numOfFeatureSlices), numOfNodeFeatures);
+            IList<int> nodeFeatureOriginalIndices = nodeFeatureIndicesMap.ObjectsList();
+            IList<int> edgeFeatureOriginalIndices = edgeFeatureIndicesMap.ObjectsList();
             IIndex<int> newNodeFeatureIndex = new HashIndex<int>();
             IIndex<int> newEdgeFeatureIndex = new HashIndex<int>();
             IIndex<String> newFeatureIndex = new HashIndex<String>();
@@ -1949,7 +1950,7 @@ namespace Stanford.NER.Net.IE.CRF
             nodeFeatureIndicesMap = newNodeFeatureIndex;
             edgeFeatureIndicesMap = newEdgeFeatureIndex;
             int[] newMap = new int[newFeatureIndex.Size()];
-            for (int i = 0; i < newMap.length; i++)
+            for (int i = 0; i < newMap.Length; i++)
             {
                 int index = featureIndex.IndexOf(newFeatureIndex.Get(i));
                 newMap[i] = map[index];
@@ -1964,19 +1965,19 @@ namespace Stanford.NER.Net.IE.CRF
             int[] oldFeatures = null;
             int oldFeatureIndex = -1;
             List<int> newFeatureList = new List<int>(1000);
-            Set<int> featureIndicesSet = featureIndicesSetArray.Get(lopIter);
-            int[][][][] newData = new int[data.length];
-            for (int i = 0; i < data.length; i++)
+            ISet<int> featureIndicesSet = featureIndicesSetArray.Get(lopIter);
+            int[][][][] newData = new int[data.Length][][][];
+            for (int i = 0; i < data.Length; i++)
             {
-                newData[i] = new int[data[i].length];
-                for (int j = 0; j < data[i].length; j++)
+                newData[i] = new int[data[i].Length][][];
+                for (int j = 0; j < data[i].Length; j++)
                 {
-                    newData[i][j] = new int[data[i][j].length];
-                    for (int k = 0; k < data[i][j].length; k++)
+                    newData[i][j] = new int[data[i][j].Length][];
+                    for (int k = 0; k < data[i][j].Length; k++)
                     {
                         oldFeatures = data[i][j][k];
                         newFeatureList.Clear();
-                        for (int l = 0; l < oldFeatures.length; l++)
+                        for (int l = 0; l < oldFeatures.Length; l++)
                         {
                             oldFeatureIndex = oldFeatures[l];
                             if (featureIndicesSet.Contains(oldFeatureIndex))
@@ -2000,19 +2001,19 @@ namespace Stanford.NER.Net.IE.CRF
         protected virtual void GetFeatureBoundaryIndices(int numFeatures, int numLopExpert)
         {
             int interval = numFeatures / numLopExpert;
-            featureIndicesSetArray = new List<Set<int>>(numLopExpert);
-            featureIndicesListArray = new List<List<int>>(numLopExpert);
+            featureIndicesSetArray = new List<ISet<int>>(numLopExpert);
+            featureIndicesListArray = new List<IList<int>>(numLopExpert);
             for (int i = 0; i < numLopExpert; i++)
             {
-                featureIndicesSetArray.Add(Generics.NewHashSet(interval));
-                featureIndicesListArray.Add(Generics.NewArrayList(interval));
+                featureIndicesSetArray.Add(new HashSet<int>());
+                featureIndicesListArray.Add(new List<int>(interval));
             }
 
             if (flags.randomLopFeatureSplit)
             {
                 for (int fIndex = 0; fIndex < numFeatures; fIndex++)
                 {
-                    int lopIter = random.NextInt(numLopExpert);
+                    int lopIter = random.Next(numLopExpert);
                     featureIndicesSetArray.Get(lopIter).Add(fIndex);
                     featureIndicesListArray.Get(lopIter).Add(fIndex);
                 }
@@ -2045,7 +2046,7 @@ namespace Stanford.NER.Net.IE.CRF
         protected virtual double[] TrainWeightsUsingLopCRF(int numFeatures, int[][][][] data, int[][] labels, Evaluator[] evaluators, int pruneFeatureItr)
         {
             int numLopExpert = flags.numLopExpert;
-            double[][] lopExpertWeights = new double[numLopExpert];
+            double[][] lopExpertWeights = new double[numLopExpert][];
             GetFeatureBoundaryIndices(numFeatures, numLopExpert);
             if (flags.initialLopWeights != null)
             {
@@ -2589,14 +2590,17 @@ namespace Stanford.NER.Net.IE.CRF
             }
         }
 
-        protected static void SaveProcessedData(List datums, string filename)
+        protected static void SaveProcessedData(IList datums, string filename)
         {
             Console.Error.Write(@"Saving processed data of size " + datums.Size() + @" to serialized file...");
-            ObjectOutputStream oos = null;
+            
             try
             {
-                oos = new ObjectOutputStream(new FileOutputStream(filename));
-                oos.WriteObject(datums);
+                using (var fs = new FileInfo(filename).OpenWrite())
+                {
+                    var bf = new BinaryFormatter();
+                    bf.Serialize(fs, datums);
+                }
             }
             catch (IOException e)
             {
@@ -2612,12 +2616,15 @@ namespace Stanford.NER.Net.IE.CRF
         protected static List<List<CRFDatum<ICollection<String>, String>>> LoadProcessedData(string filename)
         {
             Console.Error.Write(@"Loading processed data from serialized file...");
-            ObjectInputStream ois = null;
-            List<List<CRFDatum<ICollection<String>, String>>> result = Collections.EmptyList();
+
+            List<List<CRFDatum<ICollection<String>, String>>> result = new List<List<CRFDatum<ICollection<string>, string>>>();
             try
             {
-                ois = new ObjectInputStream(new FileInputStream(filename));
-                result = (List<List<CRFDatum<ICollection<String>, String>>>)ois.ReadObject();
+                using (var fs = new FileInfo(filename).OpenRead())
+                {
+                    var bf = new BinaryFormatter();
+                    result = (List<List<CRFDatum<ICollection<String>, String>>>)bf.Deserialize(fs);
+                }
             }
             catch (Exception e)
             {
@@ -3587,20 +3594,20 @@ namespace Stanford.NER.Net.IE.CRF
             return Classify(tokenSeq);
         }
 
-        public virtual void WriteWeights(PrintStream p)
+        public virtual void WriteWeights(TextWriter p)
         {
             foreach (string feature in featureIndex)
             {
                 int index = featureIndex.IndexOf(feature);
                 double[] v = weights[index];
-                Index<CRFLabel> l = this.labelIndices.Get(0);
-                p.Println(feature + @"\t\t");
+                IIndex<CRFLabel> l = this.labelIndices.Get(0);
+                p.WriteLine(feature + @"\t\t");
                 foreach (CRFLabel label in l)
                 {
-                    p.Print(label.ToString(classIndex) + @":" + v[l.IndexOf(label)] + @"\t");
+                    p.Write(label.ToString(classIndex) + @":" + v[l.IndexOf(label)] + @"\t");
                 }
 
-                p.Println();
+                p.WriteLine();
             }
         }
 

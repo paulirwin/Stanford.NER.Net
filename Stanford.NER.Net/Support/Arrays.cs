@@ -16,6 +16,19 @@ namespace Stanford.NER.Net.Support
             }
         }
 
+        public static void Fill<T>(this T[] arr, int fromIndexInclusive, int toIndexExclusive, T value)
+        {
+            if (fromIndexInclusive > toIndexExclusive)
+                throw new ArgumentException("fromIndex > toIndex");
+            if (fromIndexInclusive < 0 || toIndexExclusive > arr.Length)
+                throw new ArgumentOutOfRangeException();
+
+            for (int i = fromIndexInclusive; i < toIndexExclusive; i++)
+            {
+                arr[i] = value;
+            }
+        }
+
         public static string ToString<T>(this T[] arr)
         {
             return string.Join(",", arr);

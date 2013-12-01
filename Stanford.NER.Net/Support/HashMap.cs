@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 namespace Stanford.NER.Net.Support
 {
     public class HashMap<TKey, TValue> : IDictionary<TKey, TValue>
-        where TKey : class
     {
         private readonly IEqualityComparer<TValue> _valueEqComp = EqualityComparer<TValue>.Default;
         private readonly IDictionary<TKey, TValue> _dict;
@@ -26,7 +25,7 @@ namespace Stanford.NER.Net.Support
 
         public void Add(TKey key, TValue value)
         {
-            if (key == null)
+            if ((object)key == null)
             {
                 _nullKeyValue = value;
                 _hasNullKey = true;
@@ -37,7 +36,7 @@ namespace Stanford.NER.Net.Support
 
         public bool ContainsKey(TKey key)
         {
-            if (key == null)
+            if ((object)key == null)
                 return _hasNullKey;
 
             return _dict.ContainsKey(key);
@@ -50,7 +49,7 @@ namespace Stanford.NER.Net.Support
 
         public bool Remove(TKey key)
         {
-            if (key == null)
+            if ((object)key == null)
             {
                 if (!_hasNullKey)
                     return false;
@@ -65,7 +64,7 @@ namespace Stanford.NER.Net.Support
 
         public bool TryGetValue(TKey key, out TValue value)
         {
-            if (key == null)
+            if ((object)key == null)
             {
                 if (!_hasNullKey)
                 {
@@ -95,7 +94,7 @@ namespace Stanford.NER.Net.Support
         {
             get
             {
-                if (key == null)
+                if ((object)key == null)
                 {
                     if (_hasNullKey)
                         return _nullKeyValue;
@@ -138,7 +137,7 @@ namespace Stanford.NER.Net.Support
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
             if (_hasNullKey)
-                array[arrayIndex++] = new KeyValuePair<TKey,TValue>(null, _nullKeyValue);
+                array[arrayIndex++] = new KeyValuePair<TKey,TValue>(default(TKey), _nullKeyValue);
 
             ((IDictionary<TKey, TValue>)_dict).CopyTo(array, arrayIndex);
         }
@@ -161,7 +160,7 @@ namespace Stanford.NER.Net.Support
         public IEnumerable<KeyValuePair<TKey, TValue>> GetEnumerable()
         {
             if (_hasNullKey)
-                yield return new KeyValuePair<TKey, TValue>(null, _nullKeyValue);
+                yield return new KeyValuePair<TKey, TValue>(default(TKey), _nullKeyValue);
 
             foreach (var kvp in _dict)
             {

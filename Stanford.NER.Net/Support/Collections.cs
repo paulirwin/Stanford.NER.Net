@@ -18,9 +18,33 @@ namespace Stanford.NER.Net.Support
             return new SetFromMap<TKey, TValue>(map);
         }
 
-        public static void Reverse<T>(this List<T> coll)
+        public static void Reverse<T>(this IList<T> coll)
         {
-            coll.Reverse();
+            var list = coll as List<T>;
+
+            if (list != null)
+            {
+                list.Reverse();
+            }
+            else
+            {
+                var arr = coll as T[];
+
+                if (arr != null)
+                {
+                    Array.Reverse(arr);
+                }
+                else
+                {
+                    arr = coll.ToArray();
+                    int j = 0;
+
+                    for (int i = arr.Length - 1; i >= 0; i--)
+                    {
+                        coll[j++] = arr[i];
+                    }
+                }
+            }
         }
 
         public static IDictionary<TKey, TValue> EmptyMap<TKey, TValue>()

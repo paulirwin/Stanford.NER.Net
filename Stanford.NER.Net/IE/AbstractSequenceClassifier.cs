@@ -1129,7 +1129,7 @@ namespace Stanford.NER.Net.IE
         }
 
         public abstract void SerializeClassifier(string serializePath);
-        public virtual void LoadClassifierNoExceptions(InputStream in_renamed, Properties props)
+        public virtual void LoadClassifierNoExceptions(Stream in_renamed, Properties props)
         {
             try
             {
@@ -1145,18 +1145,19 @@ namespace Stanford.NER.Net.IE
             }
         }
 
-        public virtual void LoadClassifier(InputStream in_renamed)
+        public virtual void LoadClassifier(Stream in_renamed)
         {
             LoadClassifier(in_renamed, null);
         }
 
-        public virtual void LoadClassifier(InputStream in_renamed, Properties props)
+        public virtual void LoadClassifier(Stream in_renamed, Properties props)
         {
             LoadClassifier(new ObjectInputStream(in_renamed), props);
         }
 
         public abstract void LoadClassifier(ObjectInputStream in_renamed, Properties props);
-        private InputStream LoadStreamFromClasspath(string path)
+
+        private Stream LoadStreamFromClasspath(string path)
         {
             InputStream istream = GetType().GetClassLoader().GetResourceAsStream(path);
             if (istream == null)
@@ -1204,7 +1205,7 @@ namespace Stanford.NER.Net.IE
 
         public virtual void LoadClassifierNoExceptions(string loadPath, Properties props)
         {
-            InputStream istream;
+            Stream istream;
             if ((istream = LoadStreamFromClasspath(loadPath)) != null)
             {
                 Timing.StartDoing(@"Loading classifier from " + loadPath);
@@ -1335,7 +1336,7 @@ namespace Stanford.NER.Net.IE
             writtenNum++;
         }
 
-        protected virtual void PrintFeatureLists(IN wi, Collection<List<String>> features)
+        protected virtual void PrintFeatureLists(IN wi, ICollection<List<String>> features)
         {
             if (flags.printFeatures == null || writtenNum >= flags.printFeaturesUpto)
             {

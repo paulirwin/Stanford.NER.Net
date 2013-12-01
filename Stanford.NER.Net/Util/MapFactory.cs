@@ -64,38 +64,38 @@ namespace Stanford.NER.Net.Util
                 return new HashMap<K, V>();
             }
 
-            public override IDictionary<K1, V1> SetMap(IDictionary<K1, V1> map)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map)
             {
-                map = Generics.NewHashMap();
+                map = new HashMap<K1, V1>();
                 return map;
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map, int initCapacity)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map, int initCapacity)
             {
-                map = Generics.NewHashMap(initCapacity);
+                map = new HashMap<K1, V1>();
                 return map;
             }
         }
 
         private class IdentityHashMapFactory<K, V> : MapFactory<K, V>
         {
-            public override Map<K, V> NewMap()
+            public override IDictionary<K, V> NewMap()
             {
                 return new IdentityHashMap<K, V>();
             }
 
-            public override Map<K, V> NewMap(int initCapacity)
+            public override IDictionary<K, V> NewMap(int initCapacity)
             {
                 return new IdentityHashMap<K, V>(initCapacity);
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map)
             {
                 map = new IdentityHashMap<K1, V1>();
                 return map;
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map, int initCapacity)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map, int initCapacity)
             {
                 map = new IdentityHashMap<K1, V1>(initCapacity);
                 return map;
@@ -104,23 +104,23 @@ namespace Stanford.NER.Net.Util
 
         private class WeakHashMapFactory<K, V> : MapFactory<K, V>
         {
-            public override Map<K, V> NewMap()
+            public override IDictionary<K, V> NewMap()
             {
                 return new WeakHashMap<K, V>();
             }
 
-            public override Map<K, V> NewMap(int initCapacity)
+            public override IDictionary<K, V> NewMap(int initCapacity)
             {
                 return new WeakHashMap<K, V>(initCapacity);
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map)
             {
                 map = new WeakHashMap<K1, V1>();
                 return map;
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map, int initCapacity)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map, int initCapacity)
             {
                 map = new WeakHashMap<K1, V1>(initCapacity);
                 return map;
@@ -129,23 +129,23 @@ namespace Stanford.NER.Net.Util
 
         private class TreeMapFactory<K, V> : MapFactory<K, V>
         {
-            public override Map<K, V> NewMap()
+            public override IDictionary<K, V> NewMap()
             {
                 return new TreeMap<K, V>();
             }
 
-            public override Map<K, V> NewMap(int initCapacity)
+            public override IDictionary<K, V> NewMap(int initCapacity)
             {
                 return NewMap();
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map)
             {
                 map = new TreeMap<K1, V1>();
                 return map;
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map, int initCapacity)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map, int initCapacity)
             {
                 map = new TreeMap<K1, V1>();
                 return map;
@@ -154,23 +154,23 @@ namespace Stanford.NER.Net.Util
 
         private class LinkedHashMapFactory<K, V> : MapFactory<K, V>
         {
-            public override Map<K, V> NewMap()
+            public override IDictionary<K, V> NewMap()
             {
                 return new LinkedHashMap<K, V>();
             }
 
-            public override Map<K, V> NewMap(int initCapacity)
+            public override IDictionary<K, V> NewMap(int initCapacity)
             {
                 return NewMap();
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map)
             {
                 map = new LinkedHashMap<K1, V1>();
                 return map;
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map, int initCapacity)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map, int initCapacity)
             {
                 map = new LinkedHashMap<K1, V1>();
                 return map;
@@ -179,22 +179,22 @@ namespace Stanford.NER.Net.Util
 
         private class ArrayMapFactory<K, V> : MapFactory<K, V>
         {
-            public override Map<K, V> NewMap()
+            public override IDictionary<K, V> NewMap()
             {
                 return new ArrayMap<K, V>();
             }
 
-            public override Map<K, V> NewMap(int initCapacity)
+            public override IDictionary<K, V> NewMap(int initCapacity)
             {
                 return new ArrayMap<K, V>(initCapacity);
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map)
             {
                 return new ArrayMap<K1, V1>();
             }
 
-            public override Map<K1, V1> SetMap(Map<K1, V1> map, int initCapacity)
+            public override IDictionary<K1, V1> SetMap<K1, V1>(IDictionary<K1, V1> map, int initCapacity)
             {
                 map = new ArrayMap<K1, V1>(initCapacity);
                 return map;
